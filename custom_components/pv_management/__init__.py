@@ -752,14 +752,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Entlädt die Integration."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        ctrl = hass.data[DOMAIN][entry.entry_id][DATA_CTRL]
-        await ctrl.async_stop()
-        hass.data[DOMAIN].pop(entry.entry_id)
-    return unload_ok
+    try:
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+        if unload_ok and DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            ctrl = hass.data[DOMAIN][entry.entry_id].get(DATA_CTRL)
+            if ctrl:
+                await ctrl.async_stop()
+            hass.data[DOMAIN].pop(entry.entry_id, None)
+        return unload_ok
+    except Exception as e:
+        _LOGGER.error("Fehler beim Entladen: %s", e)
+        return False
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handler für Options-Updates."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    try:
+        await hass.config_entries.async_reload(entry.entry_id)
+    except Exception as e:
+        _LOGGER.error("Fehler beim Reload nach Options-Änderung: %s", e)
