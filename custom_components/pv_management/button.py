@@ -14,7 +14,7 @@ async def async_setup_entry(
     """Setup der Buttons."""
     ctrl = hass.data[DOMAIN][entry.entry_id][DATA_CTRL]
     name = entry.data.get(CONF_NAME, "PV Management")
-    async_add_entities([RefreshButton(ctrl, name), ResetButton(ctrl, name)])
+    async_add_entities([ResetButton(ctrl, name)])
 
 
 class BaseButton(ButtonEntity):
@@ -33,17 +33,6 @@ class BaseButton(ButtonEntity):
             manufacturer="Custom",
             model="PV Management",
         )
-
-
-class RefreshButton(BaseButton):
-    """Button zum manuellen Aktualisieren der Berechnung."""
-
-    def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Aktualisieren", icon="mdi:refresh")
-
-    async def async_press(self) -> None:
-        """Benachrichtigt alle Entities für Update."""
-        self.ctrl._notify_entities()
 
 
 class ResetButton(BaseButton):

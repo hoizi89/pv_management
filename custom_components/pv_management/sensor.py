@@ -454,13 +454,17 @@ class AutarkyRateSensor(BaseEntity):
         )
 
     @property
-    def native_value(self) -> float:
-        return round(self.ctrl.autarky_rate, 1)
+    def native_value(self) -> float | None:
+        rate = self.ctrl.autarky_rate
+        if rate is None:
+            return None
+        return round(rate, 1)
 
     @property
     def extra_state_attributes(self):
         return {
             "description": "Anteil des Verbrauchs der durch PV gedeckt wird",
+            "hinweis": "Benötigt konfigurierten Verbrauchs-Sensor" if self.ctrl.autarky_rate is None else None,
         }
 
 

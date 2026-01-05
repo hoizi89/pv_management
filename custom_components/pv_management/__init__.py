@@ -336,10 +336,11 @@ class PVManagementController:
         return min(100.0, (current_self / self._pv_production_kwh) * 100)
 
     @property
-    def autarky_rate(self) -> float:
-        """Autarkiegrad (%)."""
-        if self._consumption_kwh <= 0:
-            return 0.0
+    def autarky_rate(self) -> float | None:
+        """Autarkiegrad (%). None wenn kein Verbrauch konfiguriert."""
+        # Ohne Verbrauchs-Sensor kann Autarkiegrad nicht berechnet werden
+        if not self.consumption_entity or self._consumption_kwh <= 0:
+            return None
         current_self = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
         return min(100.0, (current_self / self._consumption_kwh) * 100)
 
