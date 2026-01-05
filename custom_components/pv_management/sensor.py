@@ -962,13 +962,13 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
         if pv_power >= pv_very_high:
             pv_score = 4
-            reasons_positive.append(f"Sehr viel PV ({pv_percent:.0f}%)")
+            reasons_positive.append("Sehr viel PV")
         elif pv_power >= pv_high:
             pv_score = 2
-            reasons_positive.append(f"Viel PV ({pv_percent:.0f}%)")
+            reasons_positive.append("Viel PV")
         elif pv_power < pv_low:
             pv_score = -1
-            reasons_negative.append(f"Kaum PV ({pv_percent:.0f}%)")
+            reasons_negative.append("Kaum PV")
         else:
             pv_score = 0
 

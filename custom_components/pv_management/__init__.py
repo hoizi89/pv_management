@@ -705,15 +705,15 @@ class PVManagementController:
         reasons = []
 
         # PV-Leistung (basierend auf Peak-Leistung)
+        # Schwellwerte: 60% sehr viel, 30% viel, <5% kein PV
         pv_very_high = self.pv_peak_power * 0.6
         pv_high = self.pv_peak_power * 0.3
         pv_low = self.pv_peak_power * 0.05
-        pv_percent = (self._pv_power / self.pv_peak_power * 100) if self.pv_peak_power > 0 else 0
 
         if self._pv_power >= pv_very_high:
-            reasons.append(f"sehr viel PV ({pv_percent:.0f}%)")
+            reasons.append("sehr viel PV")
         elif self._pv_power >= pv_high:
-            reasons.append(f"viel PV ({pv_percent:.0f}%)")
+            reasons.append("viel PV")
         elif self._pv_power < pv_low:
             reasons.append("kein PV")
 
