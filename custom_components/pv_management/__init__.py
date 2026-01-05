@@ -15,13 +15,13 @@ from .const import (
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
-    CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
+    CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE, CONF_SAVINGS_OFFSET,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
-    DEFAULT_INSTALLATION_COST,
+    DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
@@ -133,6 +133,7 @@ class PVManagementController:
         # Kosten und Datum
         self.installation_cost = opts.get(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)
         self.installation_date = opts.get(CONF_INSTALLATION_DATE)
+        self.savings_offset = opts.get(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)
 
         # Empfehlungs-Schwellwerte
         self.battery_soc_high = opts.get(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)
@@ -466,8 +467,9 @@ class PVManagementController:
 
     @property
     def total_savings(self) -> float:
-        """Gesamtersparnis."""
-        return self.savings_self_consumption + self.earnings_feed_in
+        """Gesamtersparnis inkl. manuellem Offset."""
+        base = self.savings_self_consumption + self.earnings_feed_in
+        return base + self.savings_offset
 
     @property
     def amortisation_percent(self) -> float:

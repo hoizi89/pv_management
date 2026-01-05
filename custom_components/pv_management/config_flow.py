@@ -14,15 +14,15 @@ from .const import (
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
-    CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD,
+    CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD, CONF_SAVINGS_OFFSET,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
-    DEFAULT_INSTALLATION_COST,
+    DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
     DEFAULT_PV_PEAK_POWER, DEFAULT_WINTER_BASE_LOAD,
-    RANGE_COST, RANGE_BATTERY_SOC, RANGE_PV_POWER,
+    RANGE_COST, RANGE_OFFSET, RANGE_BATTERY_SOC, RANGE_PV_POWER,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
 
@@ -181,6 +181,16 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Optional(CONF_INSTALLATION_DATE, default=get_val(CONF_INSTALLATION_DATE)):
                     selector.DateSelector(),
+
+                # Korrektur-Offset für Ersparnis (z.B. nach Rechnung)
+                vol.Optional(CONF_SAVINGS_OFFSET, default=get_val(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=-RANGE_OFFSET["max"], max=RANGE_OFFSET["max"], step=RANGE_OFFSET["step"],
+                            unit_of_measurement="€",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
 
                 # === PREISE ===
                 vol.Required(CONF_ELECTRICITY_PRICE_UNIT, default=get_val(CONF_ELECTRICITY_PRICE_UNIT, DEFAULT_ELECTRICITY_PRICE_UNIT)):
