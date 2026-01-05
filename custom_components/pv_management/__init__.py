@@ -481,12 +481,17 @@ class PVManagementController:
         """
         Autarkiegrad (%) - Anteil des Verbrauchs der durch PV gedeckt wird.
 
-        Berechnung:
+        Berechnung basiert auf SENSOR-TOTALS (nicht getrackten Werten):
+        - Eigenverbrauch = PV Produktion - Netzeinspeisung
         - Mit Verbrauchs-Sensor: Eigenverbrauch / Verbrauch
         - Ohne Verbrauchs-Sensor: Eigenverbrauch / (Eigenverbrauch + Netzbezug)
         """
-        # Eigenverbrauch aus Totals (nicht aktuelle Werte)
-        self_consumption = self._total_self_consumption_kwh
+        # Eigenverbrauch aus aktuellen Sensor-Werten berechnen
+        # (konsistent mit den anderen Sensor-Totals)
+        self_consumption = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
+
+        if self_consumption <= 0:
+            return None
 
         # Option 1: Verbrauchs-Sensor vorhanden
         if self.consumption_entity and self._consumption_kwh > 0:
