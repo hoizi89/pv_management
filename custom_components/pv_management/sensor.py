@@ -937,27 +937,34 @@ class ConsumptionRecommendationSensor(BaseEntity):
         reasons_positive = []
         reasons_negative = []
 
-        # === PV-Leistung ===
+        # === PV-Leistung (basierend auf Peak-Leistung) ===
         pv_power = self.ctrl.pv_power
-        pv_threshold = self.ctrl.pv_power_high
+        pv_peak = self.ctrl.pv_peak_power
+        pv_very_high = pv_peak * 0.6
+        pv_high = pv_peak * 0.3
+        pv_low = pv_peak * 0.05
+        pv_percent = (pv_power / pv_peak * 100) if pv_peak > 0 else 0
 
-        if pv_power >= pv_threshold:
-            pv_score = 3
-            reasons_positive.append(f"Hohe PV-Leistung ({pv_power:.0f}W)")
-        elif pv_power >= pv_threshold * 0.5:
-            pv_score = 1
-            reasons_positive.append(f"Mittlere PV-Leistung ({pv_power:.0f}W)")
-        elif pv_power < 100:
+        if pv_power >= pv_very_high:
+            pv_score = 4
+            reasons_positive.append(f"Sehr viel PV ({pv_percent:.0f}%)")
+        elif pv_power >= pv_high:
+            pv_score = 2
+            reasons_positive.append(f"Viel PV ({pv_percent:.0f}%)")
+        elif pv_power < pv_low:
             pv_score = -1
-            reasons_negative.append(f"Kaum PV-Leistung ({pv_power:.0f}W)")
+            reasons_negative.append(f"Kaum PV ({pv_percent:.0f}%)")
         else:
             pv_score = 0
 
         breakdown["pv_leistung"] = {
             "wert": f"{pv_power:.0f} W",
-            "schwelle_hoch": f"{pv_threshold:.0f} W",
+            "prozent": f"{pv_percent:.0f}%",
+            "peak_leistung": f"{pv_peak:.0f} W",
+            "schwelle_sehr_hoch": f"{pv_very_high:.0f} W (60%)",
+            "schwelle_hoch": f"{pv_high:.0f} W (30%)",
             "punkte": pv_score,
-            "bewertung": "+++" if pv_score >= 3 else "++" if pv_score >= 1 else "--" if pv_score < 0 else "o"
+            "bewertung": "++++" if pv_score >= 4 else "++" if pv_score >= 2 else "--" if pv_score < 0 else "o"
         }
         total_score += pv_score
 
@@ -1134,7 +1141,9 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
             # Konfiguration (zum Nachvollziehen)
             "config": {
-                "pv_power_schwelle": f"{self.ctrl.pv_power_high:.0f} W",
+                "pv_peak_leistung": f"{self.ctrl.pv_peak_power:.0f} W",
+                "pv_sehr_hoch": f"{self.ctrl.pv_peak_power * 0.6:.0f} W (60%)",
+                "pv_hoch": f"{self.ctrl.pv_peak_power * 0.3:.0f} W (30%)",
                 "preis_guenstig": f"{self.ctrl.price_low_threshold:.2f} €/kWh",
                 "preis_teuer": f"{self.ctrl.price_high_threshold:.2f} €/kWh",
                 "batterie_voll": f"{self.ctrl.battery_soc_high:.0f}%" if self.ctrl.battery_soc_entity else "N/A",

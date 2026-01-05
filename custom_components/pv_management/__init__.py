@@ -18,12 +18,14 @@ from .const import (
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
+    CONF_PV_PEAK_POWER,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
+    DEFAULT_PV_PEAK_POWER,
     PRICE_UNIT_CENT,
     RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_RED,
 )
@@ -138,6 +140,7 @@ class PVManagementController:
         self.price_high_threshold = opts.get(CONF_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_HIGH_THRESHOLD)
         self.price_low_threshold = opts.get(CONF_PRICE_LOW_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD)
         self.pv_power_high = opts.get(CONF_PV_POWER_HIGH, DEFAULT_PV_POWER_HIGH)
+        self.pv_peak_power = opts.get(CONF_PV_PEAK_POWER, DEFAULT_PV_PEAK_POWER)
 
     def _convert_price_to_eur(self, price: float, unit: str, auto_detect: bool = False) -> float:
         """
@@ -596,12 +599,19 @@ class PVManagementController:
         """
         score = 0  # Positiv = gut zu verbrauchen, Negativ = nicht verbrauchen
 
-        # === PV-Leistung (aktuell) ===
-        if self._pv_power >= self.pv_power_high:
-            score += 3  # Viel PV -> sehr gut
-        elif self._pv_power >= self.pv_power_high * 0.5:
-            score += 1  # Mittlere PV -> gut
-        elif self._pv_power < 100:
+        # === PV-Leistung (basierend auf Peak-Leistung) ===
+        # Berechne Schwellwerte als Prozent der Peak-Leistung
+        pv_very_high = self.pv_peak_power * 0.6   # 60% = sehr viel PV
+        pv_high = self.pv_peak_power * 0.3        # 30% = viel PV
+        pv_low = self.pv_peak_power * 0.05        # 5% = kaum PV
+
+        if self._pv_power >= pv_very_high:
+            score += 4  # Sehr viel PV -> hervorragend
+        elif self._pv_power >= pv_high:
+            score += 2  # Viel PV -> gut
+        elif self._pv_power >= pv_low:
+            score += 0  # Mittlere PV -> neutral
+        else:
             score -= 1  # Kaum PV -> schlecht
 
         # === Batterie-Ladestand ===
@@ -694,10 +704,17 @@ class PVManagementController:
         """Erstellt menschenlesbare Begründung für die Empfehlung."""
         reasons = []
 
-        # PV-Leistung
-        if self._pv_power >= self.pv_power_high:
-            reasons.append("viel PV")
-        elif self._pv_power < 100:
+        # PV-Leistung (basierend auf Peak-Leistung)
+        pv_very_high = self.pv_peak_power * 0.6
+        pv_high = self.pv_peak_power * 0.3
+        pv_low = self.pv_peak_power * 0.05
+        pv_percent = (self._pv_power / self.pv_peak_power * 100) if self.pv_peak_power > 0 else 0
+
+        if self._pv_power >= pv_very_high:
+            reasons.append(f"sehr viel PV ({pv_percent:.0f}%)")
+        elif self._pv_power >= pv_high:
+            reasons.append(f"viel PV ({pv_percent:.0f}%)")
+        elif self._pv_power < pv_low:
             reasons.append("kein PV")
 
         # Batterie
@@ -731,11 +748,18 @@ class PVManagementController:
         """Detaillierter Score für die Empfehlung."""
         score = 0
 
-        if self._pv_power >= self.pv_power_high:
-            score += 3
-        elif self._pv_power >= self.pv_power_high * 0.5:
-            score += 1
-        elif self._pv_power < 100:
+        # PV-Leistung (basierend auf Peak-Leistung)
+        pv_very_high = self.pv_peak_power * 0.6
+        pv_high = self.pv_peak_power * 0.3
+        pv_low = self.pv_peak_power * 0.05
+
+        if self._pv_power >= pv_very_high:
+            score += 4
+        elif self._pv_power >= pv_high:
+            score += 2
+        elif self._pv_power >= pv_low:
+            score += 0
+        else:
             score -= 1
 
         if self.battery_soc_entity:

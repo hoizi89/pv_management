@@ -14,12 +14,14 @@ from .const import (
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
+    CONF_PV_PEAK_POWER,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
+    DEFAULT_PV_PEAK_POWER,
     RANGE_COST, RANGE_BATTERY_SOC, RANGE_PV_POWER,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
@@ -240,11 +242,11 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                         )
                     ),
 
-                vol.Optional(CONF_PV_POWER_HIGH, default=get_val(CONF_PV_POWER_HIGH, DEFAULT_PV_POWER_HIGH)):
+                vol.Optional(CONF_PV_PEAK_POWER, default=get_val(CONF_PV_PEAK_POWER, DEFAULT_PV_PEAK_POWER)):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(
-                            min=RANGE_PV_POWER["min"], max=RANGE_PV_POWER["max"],
-                            step=RANGE_PV_POWER["step"],
+                            min=1000.0, max=100000.0,
+                            step=100.0,
                             unit_of_measurement="W",
                             mode=selector.NumberSelectorMode.BOX,
                         )
