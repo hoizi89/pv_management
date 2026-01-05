@@ -861,12 +861,26 @@ class ConfigurationDiagnosticSensor(BaseEntity):
             "current_electricity_price_eur": round(self.ctrl.current_electricity_price, 4),
             "current_feed_in_tariff_eur": round(self.ctrl.current_feed_in_tariff, 4),
 
+            # === EPEX SPOT INTEGRATION ===
+            "epex_price_entity": self.ctrl.epex_price_entity,
+            "epex_price_value": f"{self.ctrl.epex_price:.4f}" if self.ctrl.epex_price_entity else None,
+            "epex_quantile_entity": self.ctrl.epex_quantile_entity,
+            "epex_quantile_value": f"{self.ctrl.epex_quantile:.2f}" if self.ctrl.epex_quantile_entity else None,
+            "epex_forecast_entries": len(self.ctrl.epex_price_forecast),
+
+            # === SOLCAST INTEGRATION ===
+            "solcast_forecast_entity": self.ctrl.solcast_forecast_entity,
+            "solcast_forecast_today": f"{self.ctrl.solcast_forecast_today:.1f}" if self.ctrl.solcast_forecast_entity else None,
+            "solcast_hourly_entries": len(self.ctrl.solcast_hourly_forecast),
+
             # === META ===
             "tracking_active": self.ctrl._first_seen_date is not None,
             "first_seen_date": self.ctrl._first_seen_date.isoformat() if self.ctrl._first_seen_date else None,
             "days_tracked": self.ctrl.days_since_installation,
             "data_restored": self.ctrl._restored,
             "calculation_method": "incremental",
+            "has_epex_integration": self.ctrl.has_epex_integration,
+            "has_solcast_integration": self.ctrl.has_solcast_integration,
         }
 
     @property
@@ -972,28 +986,58 @@ class ConsumptionRecommendationSensor(BaseEntity):
             }
             total_score += bat_score
 
-        # === Strompreis ===
-        price = self.ctrl.current_electricity_price
-        price_low = self.ctrl.price_low_threshold
-        price_high = self.ctrl.price_high_threshold
+        # === Strompreis (EPEX Quantile hat Priorität) ===
+        if self.ctrl.epex_quantile_entity and 0 <= self.ctrl.epex_quantile <= 1:
+            quantile = self.ctrl.epex_quantile
+            epex_price = self.ctrl.epex_price
 
-        if price <= price_low:
-            price_score = 2
-            reasons_positive.append(f"Günstiger Strom ({price:.2f}€/kWh)")
-        elif price >= price_high:
-            price_score = -2
-            reasons_negative.append(f"Teurer Strom ({price:.2f}€/kWh)")
+            if quantile <= 0.2:
+                price_score = 3
+                reasons_positive.append(f"EPEX Top 20% günstig (Q={quantile:.2f})")
+            elif quantile <= 0.4:
+                price_score = 1
+                reasons_positive.append(f"EPEX günstig (Q={quantile:.2f})")
+            elif quantile >= 0.8:
+                price_score = -3
+                reasons_negative.append(f"EPEX Top 20% teuer (Q={quantile:.2f})")
+            elif quantile >= 0.6:
+                price_score = -1
+                reasons_negative.append(f"EPEX teuer (Q={quantile:.2f})")
+            else:
+                price_score = 0
+
+            breakdown["strompreis"] = {
+                "wert": f"{epex_price:.4f} €/kWh",
+                "quelle": "EPEX Spot",
+                "quantile": f"{quantile:.2f}",
+                "quantile_erklaerung": "0=günstigster, 1=teuerster Preis des Tages",
+                "bewertung_bereich": "≤0.2: +++, ≤0.4: +, ≥0.6: -, ≥0.8: ---",
+                "punkte": price_score,
+                "bewertung": "+++" if price_score >= 3 else "++" if price_score >= 2 else "+" if price_score >= 1 else "---" if price_score <= -3 else "--" if price_score <= -2 else "-" if price_score <= -1 else "o"
+            }
         else:
-            price_score = 0
+            # Fallback: Absoluter Preis
+            price = self.ctrl.current_electricity_price
+            price_low = self.ctrl.price_low_threshold
+            price_high = self.ctrl.price_high_threshold
 
-        breakdown["strompreis"] = {
-            "wert": f"{price:.4f} €/kWh",
-            "quelle": self.ctrl.electricity_price_source,
-            "schwelle_guenstig": f"{price_low:.2f} €/kWh",
-            "schwelle_teuer": f"{price_high:.2f} €/kWh",
-            "punkte": price_score,
-            "bewertung": "++" if price_score >= 2 else "--" if price_score <= -2 else "o"
-        }
+            if price <= price_low:
+                price_score = 2
+                reasons_positive.append(f"Günstiger Strom ({price:.2f}€/kWh)")
+            elif price >= price_high:
+                price_score = -2
+                reasons_negative.append(f"Teurer Strom ({price:.2f}€/kWh)")
+            else:
+                price_score = 0
+
+            breakdown["strompreis"] = {
+                "wert": f"{price:.4f} €/kWh",
+                "quelle": self.ctrl.electricity_price_source,
+                "schwelle_guenstig": f"{price_low:.2f} €/kWh",
+                "schwelle_teuer": f"{price_high:.2f} €/kWh",
+                "punkte": price_score,
+                "bewertung": "++" if price_score >= 2 else "--" if price_score <= -2 else "o"
+            }
         total_score += price_score
 
         # === Tageszeit ===
@@ -1016,21 +1060,30 @@ class ConsumptionRecommendationSensor(BaseEntity):
         }
         total_score += time_score
 
-        # === PV-Prognose ===
-        if self.ctrl.pv_forecast_entity and self.ctrl.pv_forecast > 0:
-            forecast = self.ctrl.pv_forecast
+        # === PV-Prognose (Solcast hat Priorität) ===
+        forecast_source = None
+        forecast = 0.0
 
+        if self.ctrl.solcast_forecast_entity and self.ctrl.solcast_forecast_today > 0:
+            forecast = self.ctrl.solcast_forecast_today
+            forecast_source = "Solcast"
+        elif self.ctrl.pv_forecast_entity and self.ctrl.pv_forecast > 0:
+            forecast = self.ctrl.pv_forecast
+            forecast_source = "Standard"
+
+        if forecast_source and forecast > 0:
             if forecast >= 10:
                 forecast_score = 1
-                reasons_positive.append(f"Gute PV-Prognose ({forecast:.1f} kWh)")
+                reasons_positive.append(f"Gute PV-Prognose ({forecast:.1f} kWh, {forecast_source})")
             elif forecast < 3:
                 forecast_score = -1
-                reasons_negative.append(f"Schlechte PV-Prognose ({forecast:.1f} kWh)")
+                reasons_negative.append(f"Schlechte PV-Prognose ({forecast:.1f} kWh, {forecast_source})")
             else:
                 forecast_score = 0
 
             breakdown["pv_prognose"] = {
                 "wert": f"{forecast:.1f} kWh",
+                "quelle": forecast_source,
                 "schwelle_gut": "≥10 kWh",
                 "schwelle_schlecht": "<3 kWh",
                 "punkte": forecast_score,
@@ -1078,7 +1131,29 @@ class ConsumptionRecommendationSensor(BaseEntity):
                 "batterie_voll": f"{self.ctrl.battery_soc_high:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
                 "batterie_leer": f"{self.ctrl.battery_soc_low:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
             },
+
+            # Integration Status
+            "integrationen": {
+                "epex_spot": self.ctrl.has_epex_integration,
+                "solcast": self.ctrl.has_solcast_integration,
+            },
         }
+
+        # EPEX Spot Details wenn verfügbar
+        if self.ctrl.has_epex_integration:
+            attrs["epex_spot"] = {
+                "preis": f"{self.ctrl.epex_price:.4f} €/kWh" if self.ctrl.epex_price_entity else "N/A",
+                "quantile": f"{self.ctrl.epex_quantile:.2f}" if self.ctrl.epex_quantile_entity else "N/A",
+                "quantile_erklaerung": "0=günstigster, 1=teuerster Preis des Tages",
+                "prognose_eintraege": len(self.ctrl.epex_price_forecast),
+            }
+
+        # Solcast Details wenn verfügbar
+        if self.ctrl.has_solcast_integration:
+            attrs["solcast"] = {
+                "prognose_heute": f"{self.ctrl.solcast_forecast_today:.1f} kWh",
+                "stunden_eintraege": len(self.ctrl.solcast_hourly_forecast),
+            }
 
         return attrs
 

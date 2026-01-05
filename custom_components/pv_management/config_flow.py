@@ -14,6 +14,7 @@ from .const import (
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
+    CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -63,6 +64,19 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.EntitySelectorConfig(domain="sensor")
                 ),
                 vol.Optional(CONF_PV_FORECAST_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+
+                # === EPEX SPOT INTEGRATION ===
+                vol.Optional(CONF_EPEX_PRICE_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+                vol.Optional(CONF_EPEX_QUANTILE_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+
+                # === SOLCAST INTEGRATION ===
+                vol.Optional(CONF_SOLCAST_FORECAST_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
                 ),
 
@@ -253,5 +267,15 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
+
+                # === EPEX SPOT INTEGRATION ===
+                vol.Optional(CONF_EPEX_PRICE_ENTITY, default=get_val(CONF_EPEX_PRICE_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_EPEX_QUANTILE_ENTITY, default=get_val(CONF_EPEX_QUANTILE_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+
+                # === SOLCAST INTEGRATION ===
+                vol.Optional(CONF_SOLCAST_FORECAST_ENTITY, default=get_val(CONF_SOLCAST_FORECAST_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
             })
         )

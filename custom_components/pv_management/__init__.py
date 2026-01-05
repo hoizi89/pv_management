@@ -18,6 +18,7 @@ from .const import (
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
+    CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -66,6 +67,15 @@ class PVManagementController:
         self._pv_power = 0.0     # W
         self._pv_forecast = 0.0  # kWh
 
+        # EPEX Spot Werte
+        self._epex_price = 0.0       # €/kWh (aktueller EPEX Preis)
+        self._epex_quantile = 0.5    # 0-1 (0=günstigster, 1=teuerster Preis des Tages)
+        self._epex_price_forecast: list[dict] = []  # Preisprognose aus data Attribut
+
+        # Solcast Werte
+        self._solcast_forecast_today = 0.0  # kWh Prognose heute
+        self._solcast_hourly_forecast: list[dict] = []  # Stündliche Prognose
+
         # Letzte bekannte Preise (für Fallback wenn Sensor temporär nicht verfügbar)
         self._last_known_electricity_price: float | None = None
         self._last_known_feed_in_tariff: float | None = None
@@ -102,6 +112,13 @@ class PVManagementController:
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
         self.pv_power_entity = opts.get(CONF_PV_POWER_ENTITY)
         self.pv_forecast_entity = opts.get(CONF_PV_FORECAST_ENTITY)
+
+        # EPEX Spot Entities
+        self.epex_price_entity = opts.get(CONF_EPEX_PRICE_ENTITY)
+        self.epex_quantile_entity = opts.get(CONF_EPEX_QUANTILE_ENTITY)
+
+        # Solcast Entity
+        self.solcast_forecast_entity = opts.get(CONF_SOLCAST_FORECAST_ENTITY)
 
         # Preis-Konfiguration
         self.electricity_price = opts.get(CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)
@@ -264,6 +281,45 @@ class PVManagementController:
     def pv_forecast(self) -> float:
         """PV-Prognose in kWh."""
         return self._pv_forecast
+
+    @property
+    def epex_price(self) -> float:
+        """Aktueller EPEX Spot Preis in €/kWh."""
+        return self._epex_price
+
+    @property
+    def epex_quantile(self) -> float:
+        """
+        EPEX Quantile (0-1).
+        0 = günstigster Preis des Tages
+        1 = teuerster Preis des Tages
+        """
+        return self._epex_quantile
+
+    @property
+    def epex_price_forecast(self) -> list[dict]:
+        """EPEX Preisprognose (aus data Attribut)."""
+        return self._epex_price_forecast
+
+    @property
+    def solcast_forecast_today(self) -> float:
+        """Solcast PV-Prognose für heute in kWh."""
+        return self._solcast_forecast_today
+
+    @property
+    def solcast_hourly_forecast(self) -> list[dict]:
+        """Solcast stündliche Prognose (aus detailedHourly Attribut)."""
+        return self._solcast_hourly_forecast
+
+    @property
+    def has_epex_integration(self) -> bool:
+        """Prüft ob EPEX Spot konfiguriert ist."""
+        return bool(self.epex_quantile_entity or self.epex_price_entity)
+
+    @property
+    def has_solcast_integration(self) -> bool:
+        """Prüft ob Solcast konfiguriert ist."""
+        return bool(self.solcast_forecast_entity)
 
     @property
     def pv_production_kwh(self) -> float:
@@ -442,9 +498,9 @@ class PVManagementController:
         Berechnet Stromverbrauch-Empfehlung basierend auf:
         - PV-Leistung (aktuell)
         - Batterie-Ladestand
-        - Strompreis
+        - Strompreis (EPEX Quantile wenn verfügbar, sonst absoluter Preis)
         - Tageszeit
-        - PV-Prognose
+        - PV-Prognose (Solcast wenn verfügbar)
 
         Returns: 'green', 'yellow', 'red'
         """
@@ -468,12 +524,24 @@ class PVManagementController:
                 # Mittlerer Bereich
                 pass
 
-        # === Strompreis ===
-        price = self.current_electricity_price
-        if price <= self.price_low_threshold:
-            score += 2  # Günstiger Strom -> gut
-        elif price >= self.price_high_threshold:
-            score -= 2  # Teurer Strom -> schlecht
+        # === Strompreis (EPEX Quantile hat Priorität) ===
+        if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
+            # EPEX Quantile: 0 = günstigster Preis, 1 = teuerster Preis
+            if self._epex_quantile <= 0.2:
+                score += 3  # Sehr günstig (unterste 20%)
+            elif self._epex_quantile <= 0.4:
+                score += 1  # Günstig (unterste 40%)
+            elif self._epex_quantile >= 0.8:
+                score -= 3  # Sehr teuer (oberste 20%)
+            elif self._epex_quantile >= 0.6:
+                score -= 1  # Teuer (oberste 40%)
+        else:
+            # Fallback: Absoluter Preis
+            price = self.current_electricity_price
+            if price <= self.price_low_threshold:
+                score += 2  # Günstiger Strom -> gut
+            elif price >= self.price_high_threshold:
+                score -= 2  # Teurer Strom -> schlecht
 
         # === Tageszeit ===
         hour = datetime.now().hour
@@ -482,11 +550,12 @@ class PVManagementController:
         elif hour < 6 or hour > 21:
             score -= 1  # Nacht -> eher schlecht
 
-        # === PV-Prognose ===
-        if self.pv_forecast_entity and self._pv_forecast > 0:
-            if self._pv_forecast >= 10:
+        # === PV-Prognose (Solcast hat Priorität) ===
+        forecast = self._solcast_forecast_today if self.solcast_forecast_entity else self._pv_forecast
+        if forecast > 0:
+            if forecast >= 10:
                 score += 1  # Gute Prognose
-            elif self._pv_forecast < 3:
+            elif forecast < 3:
                 score -= 1  # Schlechte Prognose
 
         # === Auswertung ===
@@ -526,11 +595,22 @@ class PVManagementController:
             elif self._battery_soc <= self.battery_soc_low:
                 score -= 2
 
-        price = self.current_electricity_price
-        if price <= self.price_low_threshold:
-            score += 2
-        elif price >= self.price_high_threshold:
-            score -= 2
+        # EPEX Quantile hat Priorität
+        if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
+            if self._epex_quantile <= 0.2:
+                score += 3
+            elif self._epex_quantile <= 0.4:
+                score += 1
+            elif self._epex_quantile >= 0.8:
+                score -= 3
+            elif self._epex_quantile >= 0.6:
+                score -= 1
+        else:
+            price = self.current_electricity_price
+            if price <= self.price_low_threshold:
+                score += 2
+            elif price >= self.price_high_threshold:
+                score -= 2
 
         hour = datetime.now().hour
         if 10 <= hour <= 15:
@@ -538,10 +618,11 @@ class PVManagementController:
         elif hour < 6 or hour > 21:
             score -= 1
 
-        if self.pv_forecast_entity and self._pv_forecast > 0:
-            if self._pv_forecast >= 10:
+        forecast = self._solcast_forecast_today if self.solcast_forecast_entity else self._pv_forecast
+        if forecast > 0:
+            if forecast >= 10:
                 score += 1
-            elif self._pv_forecast < 3:
+            elif forecast < 3:
                 score -= 1
 
         return score
@@ -662,6 +743,28 @@ class PVManagementController:
             "first_seen_date": self._first_seen_date.isoformat() if self._first_seen_date else None,
         }
 
+    def _load_epex_forecast(self, state) -> None:
+        """Lädt EPEX Preisprognose aus dem 'data' Attribut."""
+        try:
+            if state and state.attributes:
+                data = state.attributes.get("data")
+                if data and isinstance(data, list):
+                    self._epex_price_forecast = data
+                    _LOGGER.debug("EPEX Preisprognose geladen: %d Einträge", len(data))
+        except Exception as e:
+            _LOGGER.debug("Konnte EPEX Preisprognose nicht laden: %s", e)
+
+    def _load_solcast_forecast(self, state) -> None:
+        """Lädt Solcast Prognose aus dem 'detailedHourly' Attribut."""
+        try:
+            if state and state.attributes:
+                hourly = state.attributes.get("detailedHourly")
+                if hourly and isinstance(hourly, list):
+                    self._solcast_hourly_forecast = hourly
+                    _LOGGER.debug("Solcast Prognose geladen: %d Einträge", len(hourly))
+        except Exception as e:
+            _LOGGER.debug("Konnte Solcast Prognose nicht laden: %s", e)
+
     def _process_energy_update(self) -> None:
         """Verarbeitet Energie-Updates INKREMENTELL."""
         current_pv = self._pv_production_kwh
@@ -752,6 +855,23 @@ class PVManagementController:
             self._pv_forecast = value
             recommendation_changed = True
 
+        # EPEX Spot Sensoren
+        elif entity_id == self.epex_price_entity:
+            self._epex_price = value
+            # Versuche Preisprognose aus 'data' Attribut zu laden
+            self._load_epex_forecast(new_state)
+            recommendation_changed = True
+        elif entity_id == self.epex_quantile_entity:
+            self._epex_quantile = value
+            recommendation_changed = True
+
+        # Solcast Sensor
+        elif entity_id == self.solcast_forecast_entity:
+            self._solcast_forecast_today = value
+            # Versuche stündliche Prognose aus 'detailedHourly' Attribut zu laden
+            self._load_solcast_forecast(new_state)
+            recommendation_changed = True
+
         if changed:
             self._process_energy_update()
         elif recommendation_changed:
@@ -787,6 +907,34 @@ class PVManagementController:
                         setattr(self, attr, float(state.state))
                     except (ValueError, TypeError):
                         pass
+
+        # Initiale Werte laden - EPEX Spot
+        if self.epex_price_entity:
+            state = self.hass.states.get(self.epex_price_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    self._epex_price = float(state.state)
+                    self._load_epex_forecast(state)
+                except (ValueError, TypeError):
+                    pass
+
+        if self.epex_quantile_entity:
+            state = self.hass.states.get(self.epex_quantile_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    self._epex_quantile = float(state.state)
+                except (ValueError, TypeError):
+                    pass
+
+        # Initiale Werte laden - Solcast
+        if self.solcast_forecast_entity:
+            state = self.hass.states.get(self.solcast_forecast_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    self._solcast_forecast_today = float(state.state)
+                    self._load_solcast_forecast(state)
+                except (ValueError, TypeError):
+                    pass
 
         self._last_pv_production_kwh = self._pv_production_kwh
         self._last_grid_export_kwh = self._grid_export_kwh

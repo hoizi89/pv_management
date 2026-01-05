@@ -24,6 +24,13 @@ CONF_BATTERY_SOC_ENTITY: Final[str] = "battery_soc_entity"
 CONF_PV_POWER_ENTITY: Final[str] = "pv_power_entity"
 CONF_PV_FORECAST_ENTITY: Final[str] = "pv_forecast_entity"
 
+# --- EPEX Spot Integration ----------------------------------------------------
+CONF_EPEX_PRICE_ENTITY: Final[str] = "epex_price_entity"
+CONF_EPEX_QUANTILE_ENTITY: Final[str] = "epex_quantile_entity"
+
+# --- Solcast Integration ------------------------------------------------------
+CONF_SOLCAST_FORECAST_ENTITY: Final[str] = "solcast_forecast_entity"
+
 # --- Option keys (können später geändert werden) ------------------------------
 CONF_ELECTRICITY_PRICE: Final[str] = "electricity_price"
 CONF_ELECTRICITY_PRICE_ENTITY: Final[str] = "electricity_price_entity"
