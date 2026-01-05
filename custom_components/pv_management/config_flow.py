@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
@@ -12,19 +11,15 @@ from .const import (
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
-    CONF_INSTALLATION_COST, CONF_SAVINGS_OFFSET,
-    CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
-    CONF_INSTALLATION_DATE,
+    CONF_INSTALLATION_COST,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
-    DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
-    DEFAULT_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_EXPORT,
+    DEFAULT_INSTALLATION_COST,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
-    RANGE_COST, RANGE_OFFSET, RANGE_ENERGY_OFFSET,
-    RANGE_BATTERY_SOC, RANGE_PV_POWER,
+    RANGE_COST, RANGE_BATTERY_SOC, RANGE_PV_POWER,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
 
@@ -121,33 +116,6 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
-                vol.Optional(CONF_INSTALLATION_DATE): selector.DateSelector(),
-                vol.Optional(CONF_SAVINGS_OFFSET, default=DEFAULT_SAVINGS_OFFSET):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_OFFSET["min"], max=RANGE_OFFSET["max"], step=RANGE_OFFSET["step"],
-                            unit_of_measurement="€",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-                vol.Optional(CONF_ENERGY_OFFSET_SELF, default=DEFAULT_ENERGY_OFFSET_SELF):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_ENERGY_OFFSET["min"], max=RANGE_ENERGY_OFFSET["max"],
-                            step=RANGE_ENERGY_OFFSET["step"],
-                            unit_of_measurement="kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-                vol.Optional(CONF_ENERGY_OFFSET_EXPORT, default=DEFAULT_ENERGY_OFFSET_EXPORT):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_ENERGY_OFFSET["min"], max=RANGE_ENERGY_OFFSET["max"],
-                            step=RANGE_ENERGY_OFFSET["step"],
-                            unit_of_measurement="kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
             })
         )
 
@@ -157,7 +125,7 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class PVManagementOptionsFlow(config_entries.OptionsFlow):
-    """Options Flow für nachträgliche Anpassungen - vereinfacht."""
+    """Options Flow für nachträgliche Anpassungen."""
 
     async def async_step_init(self, user_input=None):
         """Options bearbeiten."""
@@ -175,41 +143,12 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                # === AMORTISATION (wichtigste Felder zuerst) ===
+                # === AMORTISATION ===
                 vol.Required(CONF_INSTALLATION_COST, default=get_val(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=RANGE_COST["min"], max=RANGE_COST["max"], step=RANGE_COST["step"],
                             unit_of_measurement="€",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                vol.Optional(CONF_SAVINGS_OFFSET, default=get_val(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_OFFSET["min"], max=RANGE_OFFSET["max"], step=RANGE_OFFSET["step"],
-                            unit_of_measurement="€",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                vol.Optional(CONF_ENERGY_OFFSET_SELF, default=get_val(CONF_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_SELF)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_ENERGY_OFFSET["min"], max=RANGE_ENERGY_OFFSET["max"],
-                            step=RANGE_ENERGY_OFFSET["step"],
-                            unit_of_measurement="kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                vol.Optional(CONF_ENERGY_OFFSET_EXPORT, default=get_val(CONF_ENERGY_OFFSET_EXPORT, DEFAULT_ENERGY_OFFSET_EXPORT)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_ENERGY_OFFSET["min"], max=RANGE_ENERGY_OFFSET["max"],
-                            step=RANGE_ENERGY_OFFSET["step"],
-                            unit_of_measurement="kWh",
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
