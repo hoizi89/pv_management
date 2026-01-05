@@ -15,14 +15,11 @@ from .const import (
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
-    CONF_INSTALLATION_COST, CONF_SAVINGS_OFFSET,
-    CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
-    CONF_INSTALLATION_DATE,
+    CONF_INSTALLATION_COST,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
-    DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
-    DEFAULT_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_EXPORT,
+    DEFAULT_INSTALLATION_COST,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
@@ -114,12 +111,8 @@ class PVManagementController:
         self.feed_in_tariff_entity = opts.get(CONF_FEED_IN_TARIFF_ENTITY)
         self.feed_in_tariff_unit = opts.get(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)
 
-        # Kosten und Offsets
+        # Kosten
         self.installation_cost = opts.get(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)
-        self.savings_offset = opts.get(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)
-        self.energy_offset_self = opts.get(CONF_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_SELF)
-        self.energy_offset_export = opts.get(CONF_ENERGY_OFFSET_EXPORT, DEFAULT_ENERGY_OFFSET_EXPORT)
-        self.installation_date = opts.get(CONF_INSTALLATION_DATE)
 
         # Empfehlungs-Schwellwerte
         self.battery_soc_high = opts.get(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)
@@ -293,30 +286,28 @@ class PVManagementController:
 
     @property
     def self_consumption_kwh(self) -> float:
-        """Gesamter Eigenverbrauch (inkrementell berechnet + Offset)."""
-        return self._total_self_consumption_kwh + self.energy_offset_self
+        """Gesamter Eigenverbrauch (inkrementell berechnet)."""
+        return self._total_self_consumption_kwh
 
     @property
     def feed_in_kwh(self) -> float:
-        """Gesamte Einspeisung (inkrementell berechnet + Offset)."""
-        return self._total_feed_in_kwh + self.energy_offset_export
+        """Gesamte Einspeisung (inkrementell berechnet)."""
+        return self._total_feed_in_kwh
 
     @property
     def savings_self_consumption(self) -> float:
         """Ersparnis durch Eigenverbrauch."""
-        offset_savings = self.energy_offset_self * self.current_electricity_price
-        return self._accumulated_savings_self + offset_savings
+        return self._accumulated_savings_self
 
     @property
     def earnings_feed_in(self) -> float:
         """Einnahmen durch Einspeisung."""
-        offset_earnings = self.energy_offset_export * self.current_feed_in_tariff
-        return self._accumulated_earnings_feed + offset_earnings
+        return self._accumulated_earnings_feed
 
     @property
     def total_savings(self) -> float:
-        """Gesamtersparnis inkl. Offset."""
-        return self.savings_self_consumption + self.earnings_feed_in + self.savings_offset
+        """Gesamtersparnis."""
+        return self.savings_self_consumption + self.earnings_feed_in
 
     @property
     def amortisation_percent(self) -> float:
@@ -358,17 +349,7 @@ class PVManagementController:
 
     @property
     def days_since_installation(self) -> int:
-        """Tage seit Installation."""
-        if self.installation_date:
-            try:
-                if isinstance(self.installation_date, str):
-                    install_date = datetime.fromisoformat(self.installation_date).date()
-                else:
-                    install_date = self.installation_date
-                return (date.today() - install_date).days
-            except (ValueError, TypeError):
-                pass
-
+        """Tage seit erstem Tracking."""
         if self._first_seen_date:
             return (date.today() - self._first_seen_date).days
         return 0

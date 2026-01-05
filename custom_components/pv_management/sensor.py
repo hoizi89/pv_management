@@ -212,7 +212,6 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
         return {
             "savings_self_consumption": f"{self.ctrl.savings_self_consumption:.2f}€",
             "earnings_feed_in": f"{self.ctrl.earnings_feed_in:.2f}€",
-            "offset": f"{self.ctrl.savings_offset:.2f}€",
             # Inkrementell berechnete Werte (werden restored)
             "tracked_self_consumption_kwh": round(self.ctrl._total_self_consumption_kwh, 4),
             "tracked_feed_in_kwh": round(self.ctrl._total_feed_in_kwh, 4),
@@ -312,14 +311,6 @@ class SelfConsumptionSensor(BaseEntity):
     def native_value(self) -> float:
         return round(self.ctrl.self_consumption_kwh, 2)
 
-    @property
-    def extra_state_attributes(self):
-        return {
-            "tracked_kwh": round(self.ctrl._total_self_consumption_kwh, 2),
-            "offset_kwh": round(self.ctrl.energy_offset_self, 2),
-        }
-
-
 class FeedInSensor(BaseEntity):
     """Netzeinspeisung in kWh (inkrementell berechnet)."""
 
@@ -337,13 +328,6 @@ class FeedInSensor(BaseEntity):
     @property
     def native_value(self) -> float:
         return round(self.ctrl.feed_in_kwh, 2)
-
-    @property
-    def extra_state_attributes(self):
-        return {
-            "tracked_kwh": round(self.ctrl._total_feed_in_kwh, 2),
-            "offset_kwh": round(self.ctrl.energy_offset_export, 2),
-        }
 
 
 class PVProductionSensor(BaseEntity):
@@ -863,11 +847,6 @@ class ConfigurationDiagnosticSensor(BaseEntity):
             "current_grid_export_kwh": round(self.ctrl._grid_export_kwh, 4),
             "current_grid_import_kwh": round(self.ctrl._grid_import_kwh, 4),
             "current_consumption_kwh": round(self.ctrl._consumption_kwh, 4),
-
-            # === OFFSETS (aus Konfiguration) ===
-            "offset_self_consumption_kwh": self.ctrl.energy_offset_self,
-            "offset_feed_in_kwh": self.ctrl.energy_offset_export,
-            "offset_savings_eur": self.ctrl.savings_offset,
 
             # === BERECHNETE WERTE ===
             "total_self_consumption_kwh": round(self.ctrl.self_consumption_kwh, 4),
