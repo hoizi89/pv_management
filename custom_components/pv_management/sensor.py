@@ -110,13 +110,21 @@ class BaseEntity(SensorEntity):
             manufacturer="Custom",
             model="PV Management",
         )
+        self._removed = False
 
     async def async_added_to_hass(self):
+        self._removed = False
         self.ctrl.register_entity_listener(self._on_ctrl_update)
+
+    async def async_will_remove_from_hass(self):
+        """Entfernt den Listener wenn die Entity entladen wird."""
+        self._removed = True
+        self.ctrl.unregister_entity_listener(self._on_ctrl_update)
 
     @callback
     def _on_ctrl_update(self):
-        self.async_write_ha_state()
+        if not self._removed and self.hass:
+            self.async_write_ha_state()
 
 
 # =============================================================================

@@ -541,15 +541,23 @@ class PVManagementController:
 
     def register_entity_listener(self, cb) -> None:
         """Sensoren registrieren sich hier für Updates."""
-        self._entity_listeners.append(cb)
+        if cb not in self._entity_listeners:
+            self._entity_listeners.append(cb)
+
+    def unregister_entity_listener(self, cb) -> None:
+        """Entfernt einen Entity-Listener."""
+        try:
+            self._entity_listeners.remove(cb)
+        except ValueError:
+            pass  # Listener war nicht registriert
 
     def _notify_entities(self) -> None:
         """Informiert alle Entities über Zustandsänderungen."""
-        for cb in self._entity_listeners:
+        for cb in list(self._entity_listeners):  # Copy list to avoid modification during iteration
             try:
                 cb()
             except Exception as e:
-                _LOGGER.exception("Entity-Listener Fehler: %s", e)
+                _LOGGER.debug("Entity-Listener Fehler (ignoriert): %s", e)
 
     def restore_state(self, data: dict[str, Any]) -> None:
         """Stellt den gespeicherten Zustand wieder her."""
@@ -730,6 +738,7 @@ class PVManagementController:
         for remove in self._remove_listeners:
             remove()
         self._remove_listeners.clear()
+        self._entity_listeners.clear()  # Alle Entity-Listener entfernen
 
     def set_options(self, **kwargs) -> None:
         """Setzt Optionen zur Laufzeit."""
