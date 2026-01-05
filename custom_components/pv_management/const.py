@@ -85,6 +85,7 @@ RANGE_BATTERY_SOC: Final[dict] = {"min": 0.0, "max": 100.0, "step": 1.0}
 RANGE_PV_POWER: Final[dict] = {"min": 0.0, "max": 50000.0, "step": 1.0}
 
 # --- Empfehlungs-Zustände -----------------------------------------------------
+RECOMMENDATION_DARK_GREEN: Final[str] = "dark_green"
 RECOMMENDATION_GREEN: Final[str] = "green"
 RECOMMENDATION_YELLOW: Final[str] = "yellow"
 RECOMMENDATION_RED: Final[str] = "red"

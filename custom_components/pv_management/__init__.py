@@ -25,7 +25,7 @@ from .const import (
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
     PRICE_UNIT_CENT,
-    RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_RED,
+    RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_RED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -648,13 +648,15 @@ class PVManagementController:
             elif forecast < 3:
                 score -= 1  # Schlechte Prognose
 
-        # === Auswertung ===
-        if score >= 3:
-            return RECOMMENDATION_GREEN
+        # === Auswertung (4 Stufen) ===
+        if score >= 5:
+            return RECOMMENDATION_DARK_GREEN  # Perfekt!
+        elif score >= 3:
+            return RECOMMENDATION_GREEN  # Jetzt verbrauchen
         elif score <= -2:
-            return RECOMMENDATION_RED
+            return RECOMMENDATION_RED  # Vermeiden
         else:
-            return RECOMMENDATION_YELLOW
+            return RECOMMENDATION_YELLOW  # Neutral
 
     @property
     def consumption_recommendation_text(self) -> str:
@@ -662,7 +664,9 @@ class PVManagementController:
         rec = self.consumption_recommendation
         reasons = self._get_recommendation_reasons()
 
-        if rec == RECOMMENDATION_GREEN:
+        if rec == RECOMMENDATION_DARK_GREEN:
+            base = "Perfekt zum Verbrauchen!"
+        elif rec == RECOMMENDATION_GREEN:
             base = "Jetzt verbrauchen!"
         elif rec == RECOMMENDATION_RED:
             base = "Verbrauch vermeiden!"
@@ -672,6 +676,19 @@ class PVManagementController:
         if reasons:
             return f"{base} ({reasons})"
         return base
+
+    @property
+    def consumption_recommendation_color(self) -> str:
+        """Farbe für die Ampel (für Dashboards)."""
+        rec = self.consumption_recommendation
+        if rec == RECOMMENDATION_DARK_GREEN:
+            return "#00aa00"  # Dunkelgrün
+        elif rec == RECOMMENDATION_GREEN:
+            return "#44cc44"  # Grün
+        elif rec == RECOMMENDATION_YELLOW:
+            return "#ffcc00"  # Gelb
+        else:
+            return "#cc0000"  # Rot
 
     def _get_recommendation_reasons(self) -> str:
         """Erstellt menschenlesbare Begründung für die Empfehlung."""

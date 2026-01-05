@@ -20,7 +20,7 @@ from .const import (
     CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
     CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY,
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
-    RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_RED,
+    RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_RED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -919,7 +919,9 @@ class ConsumptionRecommendationSensor(BaseEntity):
     def icon(self) -> str:
         """Icon als Ampel-Farbe."""
         rec = self.ctrl.consumption_recommendation
-        if rec == RECOMMENDATION_GREEN:
+        if rec == RECOMMENDATION_DARK_GREEN:
+            return "mdi:checkbox-marked-circle-outline"  # Doppelter Haken
+        elif rec == RECOMMENDATION_GREEN:
             return "mdi:checkbox-marked-circle"  # Grüner Haken
         elif rec == RECOMMENDATION_RED:
             return "mdi:close-circle"  # Rotes X
@@ -1089,9 +1091,18 @@ class ConsumptionRecommendationSensor(BaseEntity):
             total_score += forecast_score
 
         # === Zusammenfassung ===
+        if total_score >= 5:
+            bereich = "dunkelgrün (≥5)"
+        elif total_score >= 3:
+            bereich = "grün (≥3)"
+        elif total_score <= -2:
+            bereich = "rot (≤-2)"
+        else:
+            bereich = "gelb"
+
         breakdown["gesamt"] = {
             "punkte": total_score,
-            "bereich": "grün (≥3)" if total_score >= 3 else "rot (≤-2)" if total_score <= -2 else "gelb",
+            "bereich": bereich,
         }
 
         return {
@@ -1110,6 +1121,7 @@ class ConsumptionRecommendationSensor(BaseEntity):
         attrs = {
             # Hauptinfo
             "ampel": rec,
+            "farbe": self.ctrl.consumption_recommendation_color,
             "gesamt_score": analysis["total_score"],
             "bewertung": self._get_score_explanation(analysis["total_score"]),
 
@@ -1156,7 +1168,9 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
     def _get_score_explanation(self, score: int) -> str:
         """Erklärt den Score."""
-        if score >= 5:
+        if score >= 6:
+            return "Perfekter Zeitpunkt!"
+        elif score >= 5:
             return "Idealer Zeitpunkt!"
         elif score >= 3:
             return "Guter Zeitpunkt"
