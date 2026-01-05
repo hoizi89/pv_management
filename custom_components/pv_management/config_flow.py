@@ -23,6 +23,8 @@ from .const import (
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
 
+# Hinweis: Für Autarkiegrad benötigst du einen Verbrauchs-Sensor in kWh (nicht Watt!)
+
 
 class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config Flow für PV Management."""
@@ -144,6 +146,14 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
+                # === ENERGIE-SENSOREN (kWh Totals, nicht Watt!) ===
+                vol.Optional(CONF_GRID_EXPORT_ENTITY, default=get_val(CONF_GRID_EXPORT_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_GRID_IMPORT_ENTITY, default=get_val(CONF_GRID_IMPORT_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_CONSUMPTION_ENTITY, default=get_val(CONF_CONSUMPTION_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+
                 # === AMORTISATION ===
                 vol.Required(CONF_INSTALLATION_COST, default=get_val(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)):
                     selector.NumberSelector(
