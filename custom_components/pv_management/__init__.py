@@ -563,6 +563,47 @@ class PVManagementController:
             self._accumulated_earnings_feed,
         )
 
+    def _initialize_from_sensors(self) -> None:
+        """
+        Initialisiert die Werte mit den aktuellen Sensor-Totals.
+        Wird aufgerufen wenn keine restored Daten vorhanden sind.
+
+        Berechnung:
+        - Eigenverbrauch = PV Produktion - Einspeisung
+        - Ersparnis = Eigenverbrauch × Strompreis + Einspeisung × Einspeisevergütung
+        """
+        pv_total = self._pv_production_kwh
+        export_total = self._grid_export_kwh
+
+        if pv_total <= 0:
+            _LOGGER.info("Keine historischen PV-Daten verfügbar, starte bei 0")
+            return
+
+        # Eigenverbrauch = PV Produktion - Einspeisung
+        self_consumption = max(0, pv_total - export_total)
+        feed_in = export_total
+
+        # Berechne historische Ersparnis mit aktuellen Preisen
+        price_electricity = self.current_electricity_price
+        price_feed_in = self.current_feed_in_tariff
+
+        savings_self = self_consumption * price_electricity
+        earnings_feed = feed_in * price_feed_in
+
+        # Setze die Werte
+        self._total_self_consumption_kwh = self_consumption
+        self._total_feed_in_kwh = feed_in
+        self._accumulated_savings_self = savings_self
+        self._accumulated_earnings_feed = earnings_feed
+        self._first_seen_date = date.today()
+
+        _LOGGER.info(
+            "PV Management initialisiert mit Sensor-Totals: "
+            "%.2f kWh Eigenverbrauch (%.2f€), %.2f kWh Einspeisung (%.2f€)",
+            self_consumption, savings_self,
+            feed_in, earnings_feed,
+        )
+
     def get_state_for_storage(self) -> dict[str, Any]:
         """Gibt den zu speichernden Zustand zurück."""
         return {
@@ -703,6 +744,11 @@ class PVManagementController:
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
         self._last_consumption_kwh = self._consumption_kwh
+
+        # Wenn keine restored Daten und keine akkumulierten Werte vorhanden,
+        # initialisiere mit aktuellen Sensor-Werten (historische Daten)
+        if not self._restored and self._total_self_consumption_kwh == 0:
+            self._initialize_from_sensors()
 
         @callback
         def state_listener(event: Event):
