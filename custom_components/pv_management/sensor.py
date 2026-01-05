@@ -54,7 +54,6 @@ async def async_setup_entry(
 
         # === Effizienz-Sensoren ===
         SelfConsumptionRatioSensor(ctrl, name),
-        AutarkyRateSensor(ctrl, name),
 
         # === Statistik-Sensoren ===
         AverageDailySavingsSensor(ctrl, name),
