@@ -891,42 +891,176 @@ class ConsumptionRecommendationSensor(BaseEntity):
         """Icon als Ampel-Farbe."""
         rec = self.ctrl.consumption_recommendation
         if rec == RECOMMENDATION_GREEN:
-            return "mdi:circle"
+            return "mdi:checkbox-marked-circle"  # Grüner Haken
         elif rec == RECOMMENDATION_RED:
-            return "mdi:circle"
+            return "mdi:close-circle"  # Rotes X
         else:
-            return "mdi:circle"
+            return "mdi:minus-circle"  # Gelber Strich
+
+    def _calculate_score_breakdown(self) -> dict[str, Any]:
+        """Berechnet detaillierte Score-Aufschlüsselung."""
+        from datetime import datetime
+
+        breakdown = {}
+        total_score = 0
+        reasons_positive = []
+        reasons_negative = []
+
+        # === PV-Leistung ===
+        pv_power = self.ctrl.pv_power
+        pv_threshold = self.ctrl.pv_power_high
+
+        if pv_power >= pv_threshold:
+            pv_score = 3
+            reasons_positive.append(f"Hohe PV-Leistung ({pv_power:.0f}W)")
+        elif pv_power >= pv_threshold * 0.5:
+            pv_score = 1
+            reasons_positive.append(f"Mittlere PV-Leistung ({pv_power:.0f}W)")
+        elif pv_power < 100:
+            pv_score = -1
+            reasons_negative.append(f"Kaum PV-Leistung ({pv_power:.0f}W)")
+        else:
+            pv_score = 0
+
+        breakdown["pv_leistung"] = {
+            "wert": f"{pv_power:.0f} W",
+            "schwelle_hoch": f"{pv_threshold:.0f} W",
+            "punkte": pv_score,
+            "bewertung": "+++" if pv_score >= 3 else "++" if pv_score >= 1 else "--" if pv_score < 0 else "o"
+        }
+        total_score += pv_score
+
+        # === Batterie ===
+        if self.ctrl.battery_soc_entity:
+            battery_soc = self.ctrl.battery_soc
+            soc_high = self.ctrl.battery_soc_high
+            soc_low = self.ctrl.battery_soc_low
+
+            if battery_soc >= soc_high:
+                bat_score = 2
+                reasons_positive.append(f"Batterie voll ({battery_soc:.0f}%)")
+            elif battery_soc <= soc_low:
+                bat_score = -2
+                reasons_negative.append(f"Batterie leer ({battery_soc:.0f}%)")
+            else:
+                bat_score = 0
+
+            breakdown["batterie"] = {
+                "wert": f"{battery_soc:.0f}%",
+                "schwelle_voll": f"{soc_high:.0f}%",
+                "schwelle_leer": f"{soc_low:.0f}%",
+                "punkte": bat_score,
+                "bewertung": "++" if bat_score >= 2 else "--" if bat_score <= -2 else "o"
+            }
+            total_score += bat_score
+
+        # === Strompreis ===
+        price = self.ctrl.current_electricity_price
+        price_low = self.ctrl.price_low_threshold
+        price_high = self.ctrl.price_high_threshold
+
+        if price <= price_low:
+            price_score = 2
+            reasons_positive.append(f"Günstiger Strom ({price:.2f}€/kWh)")
+        elif price >= price_high:
+            price_score = -2
+            reasons_negative.append(f"Teurer Strom ({price:.2f}€/kWh)")
+        else:
+            price_score = 0
+
+        breakdown["strompreis"] = {
+            "wert": f"{price:.4f} €/kWh",
+            "quelle": self.ctrl.electricity_price_source,
+            "schwelle_guenstig": f"{price_low:.2f} €/kWh",
+            "schwelle_teuer": f"{price_high:.2f} €/kWh",
+            "punkte": price_score,
+            "bewertung": "++" if price_score >= 2 else "--" if price_score <= -2 else "o"
+        }
+        total_score += price_score
+
+        # === Tageszeit ===
+        hour = datetime.now().hour
+
+        if 10 <= hour <= 15:
+            time_score = 1
+            reasons_positive.append(f"Gute Tageszeit ({hour}:00)")
+        elif hour < 6 or hour > 21:
+            time_score = -1
+            reasons_negative.append(f"Nachtzeit ({hour}:00)")
+        else:
+            time_score = 0
+
+        breakdown["tageszeit"] = {
+            "wert": f"{hour}:00 Uhr",
+            "kernzeit": "10:00 - 15:00",
+            "punkte": time_score,
+            "bewertung": "+" if time_score >= 1 else "-" if time_score <= -1 else "o"
+        }
+        total_score += time_score
+
+        # === PV-Prognose ===
+        if self.ctrl.pv_forecast_entity and self.ctrl.pv_forecast > 0:
+            forecast = self.ctrl.pv_forecast
+
+            if forecast >= 10:
+                forecast_score = 1
+                reasons_positive.append(f"Gute PV-Prognose ({forecast:.1f} kWh)")
+            elif forecast < 3:
+                forecast_score = -1
+                reasons_negative.append(f"Schlechte PV-Prognose ({forecast:.1f} kWh)")
+            else:
+                forecast_score = 0
+
+            breakdown["pv_prognose"] = {
+                "wert": f"{forecast:.1f} kWh",
+                "schwelle_gut": "≥10 kWh",
+                "schwelle_schlecht": "<3 kWh",
+                "punkte": forecast_score,
+                "bewertung": "+" if forecast_score >= 1 else "-" if forecast_score <= -1 else "o"
+            }
+            total_score += forecast_score
+
+        # === Zusammenfassung ===
+        breakdown["gesamt"] = {
+            "punkte": total_score,
+            "bereich": "grün (≥3)" if total_score >= 3 else "rot (≤-2)" if total_score <= -2 else "gelb",
+        }
+
+        return {
+            "breakdown": breakdown,
+            "gruende_positiv": reasons_positive,
+            "gruende_negativ": reasons_negative,
+            "total_score": total_score,
+        }
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Detaillierte Infos zur Empfehlung."""
+        """Detaillierte Infos zur Empfehlung mit Score-Aufschlüsselung."""
         rec = self.ctrl.consumption_recommendation
-        score = self.ctrl.consumption_recommendation_score
+        analysis = self._calculate_score_breakdown()
 
         attrs = {
+            # Hauptinfo
             "ampel": rec,
-            "score": score,
-            "score_explanation": self._get_score_explanation(score),
+            "gesamt_score": analysis["total_score"],
+            "bewertung": self._get_score_explanation(analysis["total_score"]),
+
+            # Gründe (für einfache Anzeige)
+            "gruende_positiv": ", ".join(analysis["gruende_positiv"]) if analysis["gruende_positiv"] else "Keine",
+            "gruende_negativ": ", ".join(analysis["gruende_negativ"]) if analysis["gruende_negativ"] else "Keine",
+
+            # Detaillierte Aufschlüsselung
+            "score_details": analysis["breakdown"],
+
+            # Konfiguration (zum Nachvollziehen)
+            "config": {
+                "pv_power_schwelle": f"{self.ctrl.pv_power_high:.0f} W",
+                "preis_guenstig": f"{self.ctrl.price_low_threshold:.2f} €/kWh",
+                "preis_teuer": f"{self.ctrl.price_high_threshold:.2f} €/kWh",
+                "batterie_voll": f"{self.ctrl.battery_soc_high:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
+                "batterie_leer": f"{self.ctrl.battery_soc_low:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
+            },
         }
-
-        # Aktuelle Werte die in die Berechnung einfließen
-        attrs["pv_power_w"] = round(self.ctrl.pv_power, 0)
-        attrs["pv_power_threshold_w"] = self.ctrl.pv_power_high
-
-        if self.ctrl.battery_soc_entity:
-            attrs["battery_soc"] = f"{self.ctrl.battery_soc:.0f}%"
-            attrs["battery_soc_high"] = f"{self.ctrl.battery_soc_high:.0f}%"
-            attrs["battery_soc_low"] = f"{self.ctrl.battery_soc_low:.0f}%"
-
-        attrs["electricity_price"] = f"{self.ctrl.current_electricity_price:.4f} €/kWh"
-        attrs["price_low_threshold"] = f"{self.ctrl.price_low_threshold:.2f} €/kWh"
-        attrs["price_high_threshold"] = f"{self.ctrl.price_high_threshold:.2f} €/kWh"
-
-        if self.ctrl.pv_forecast_entity:
-            attrs["pv_forecast_kwh"] = round(self.ctrl.pv_forecast, 1)
-
-        from datetime import datetime
-        attrs["hour"] = datetime.now().hour
 
         return attrs
 
@@ -944,11 +1078,6 @@ class ConsumptionRecommendationSensor(BaseEntity):
             return "Eher ungünstig"
         else:
             return "Schlechter Zeitpunkt"
-
-    @property
-    def entity_picture(self) -> str | None:
-        """Gibt URL für Ampelbild zurück (optional)."""
-        return None
 
     @property
     def available(self) -> bool:
