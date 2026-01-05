@@ -1,7 +1,7 @@
 {
   "domain": "pv_management",
   "name": "PV Management",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "documentation": "https://github.com/hoizi89/pv_management",
   "issue_tracker": "https://github.com/hoizi89/pv_management/issues",
   "requirements": [],

@@ -775,8 +775,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handler für Options-Updates."""
+    """Handler für Options-Updates - aktualisiert nur die Optionen ohne Reload."""
     try:
-        await hass.config_entries.async_reload(entry.entry_id)
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            ctrl = hass.data[DOMAIN][entry.entry_id].get(DATA_CTRL)
+            if ctrl:
+                ctrl._load_options()
+                ctrl._notify_entities()
+                _LOGGER.info("PV Management Optionen aktualisiert")
     except Exception as e:
-        _LOGGER.error("Fehler beim Reload nach Options-Änderung: %s", e)
+        _LOGGER.error("Fehler beim Aktualisieren der Optionen: %s", e)
