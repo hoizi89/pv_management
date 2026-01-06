@@ -907,23 +907,25 @@ class PVManagementController:
         reasons = []
 
         # PV-Leistung (basierend auf Peak-Leistung)
-        # Im Winter wird Grundlast (z.B. Wärmepumpe) abgezogen
+        # Für Text: tatsächliche Messung verwenden (nicht effektive nach Abzug)
         # Schwellwerte: 60% sehr viel, 30% viel, 10% etwas, <5% kaum
-        pv_power = self.effective_pv_power  # Mit Winter-Grundlast-Abzug
+        pv_power_raw = self._pv_power  # Tatsächliche Messung
+        pv_power_effective = self.effective_pv_power  # Mit Winter-Grundlast-Abzug (für Score)
         pv_very_high = self.pv_peak_power * 0.6
         pv_high = self.pv_peak_power * 0.3
         pv_moderate = self.pv_peak_power * 0.1
         pv_low = self.pv_peak_power * 0.05
 
-        if pv_power >= pv_very_high:
+        # Text basiert auf tatsächlicher Messung
+        if pv_power_raw >= pv_very_high:
             reasons.append("sehr viel PV")
-        elif pv_power >= pv_high:
+        elif pv_power_raw >= pv_high:
             reasons.append("viel PV")
-        elif pv_power >= pv_moderate:
+        elif pv_power_raw >= pv_moderate:
             reasons.append("etwas PV")
-        elif pv_power <= 0:
+        elif pv_power_raw <= 0:
             reasons.append("kein PV")
-        elif pv_power < pv_low:
+        elif pv_power_raw < pv_low:
             reasons.append("kaum PV")
 
         # Batterie
