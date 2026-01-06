@@ -718,7 +718,7 @@ class PVManagementController:
         rec = self.consumption_recommendation
         reasons = self._get_recommendation_reasons()
 
-        # Klare Handlungsempfehlung als Präfix
+        # Klare Handlungsempfehlung als Präfix (außer bei Neutral)
         if rec == RECOMMENDATION_DARK_GREEN:
             prefix = "Idealer Zeitpunkt"
         elif rec == RECOMMENDATION_GREEN:
@@ -726,7 +726,8 @@ class PVManagementController:
         elif rec == RECOMMENDATION_RED:
             prefix = "Ungünstig"
         else:
-            prefix = "Normal"
+            # Neutral: Nur Gründe anzeigen, kein Präfix
+            return reasons if reasons else "Neutral"
 
         if reasons:
             return f"{prefix}: {reasons}"
