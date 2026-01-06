@@ -771,6 +771,8 @@ class PVManagementController:
             reasons.append("viel PV")
         elif pv_power >= pv_moderate:
             reasons.append("etwas PV")
+        elif pv_power <= 0:
+            reasons.append("kein PV")
         elif pv_power < pv_low:
             reasons.append("kaum PV")
 
