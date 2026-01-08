@@ -21,9 +21,9 @@
           "feed_in_tariff_entity": "Dynamische Einspeiseverguetung Sensor (optional)",
           "installation_cost": "Anschaffungskosten",
           "installation_date": "Installationsdatum (optional)",
-          "savings_offset": "Bereits amortisiert (Offset)",
-          "energy_offset_self_consumption": "Eigenverbrauch vor Tracking (kWh)",
-          "energy_offset_export": "Einspeisung vor Tracking (kWh)"
+          "epex_price_entity": "EPEX Spot Preis Sensor (optional)",
+          "epex_quantile_entity": "EPEX Spot Quantile Sensor (optional)",
+          "solcast_forecast_entity": "Solcast Prognose Sensor (optional)"
         },
         "data_description": {
           "name": "Name fuer diese PV-Anlage",
@@ -42,9 +42,9 @@
           "feed_in_tariff_entity": "Wenn konfiguriert, wird dieser Wert verwendet. Bei Ausfall: Fallback auf obigen Wert",
           "installation_cost": "Gesamtkosten der PV-Anlage inklusive Installation",
           "installation_date": "Datum der Installation fuer genaue Statistiken",
-          "savings_offset": "ACHTUNG: Nur verwenden wenn keine kWh-Offsets eingegeben! Bereits amortisierter Betrag in Euro",
-          "energy_offset_self_consumption": "ACHTUNG: Nur verwenden wenn kein Euro-Offset eingegeben! Eigenverbrauch vor Tracking",
-          "energy_offset_export": "ACHTUNG: Nur verwenden wenn kein Euro-Offset eingegeben! Einspeisung vor Tracking"
+          "epex_price_entity": "Fuer dynamische Strompreise (EPEX Spot Data Integration)",
+          "epex_quantile_entity": "Zeigt wie guenstig der aktuelle Preis relativ zum Tag ist (0=guenstigster, 1=teuerster)",
+          "solcast_forecast_entity": "PV-Prognose fuer intelligente Verbrauchsempfehlungen"
         }
       }
     },
@@ -58,19 +58,20 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Management Optionen",
-        "description": "Passe die Einstellungen an. Sensoren koennen nachtraeglich geaendert werden ohne Datenverlust.",
+        "title": "PV Management Einstellungen",
+        "description": "Sensoren und Parameter anpassen.",
         "data": {
           "pv_production_entity": "PV Produktion Sensor",
           "grid_export_entity": "Netzeinspeisung Sensor",
           "grid_import_entity": "Netzbezug Sensor",
           "consumption_entity": "Hausverbrauch Sensor",
           "battery_soc_entity": "Batterie-Ladestand Sensor",
-          "pv_power_entity": "PV-Leistung Sensor",
-          "pv_forecast_entity": "PV-Prognose Sensor",
-          "battery_soc_high": "Batterie 'voll' Schwelle (%)",
-          "battery_soc_low": "Batterie 'leer' Schwelle (%)",
-          "pv_power_high": "PV 'hoch' Schwelle (W)",
+          "pv_power_entity": "PV-Leistung Sensor (W)",
+          "pv_forecast_entity": "PV-Prognose Sensor (kWh)",
+          "battery_soc_high": "Batterie 'voll' Schwelle",
+          "battery_soc_low": "Batterie 'leer' Schwelle",
+          "pv_peak_power": "PV Peak-Leistung",
+          "winter_base_load": "Winter-Grundlast",
           "price_low_threshold": "Preis 'guenstig' Schwelle",
           "price_high_threshold": "Preis 'teuer' Schwelle",
           "electricity_price_unit": "Strompreis-Einheit",
@@ -81,21 +82,22 @@
           "feed_in_tariff_entity": "Dynamische Einspeiseverguetung Sensor",
           "installation_cost": "Anschaffungskosten",
           "installation_date": "Installationsdatum",
-          "savings_offset": "Ersparnis-Offset",
-          "energy_offset_self_consumption": "Eigenverbrauch-Offset (kWh)",
-          "energy_offset_export": "Einspeisung-Offset (kWh)"
+          "epex_price_entity": "EPEX Spot Preis Sensor",
+          "epex_quantile_entity": "EPEX Spot Quantile Sensor",
+          "solcast_forecast_entity": "Solcast Prognose Sensor"
         },
         "data_description": {
-          "pv_production_entity": "Sensor fuer PV-Produktion in kWh",
-          "grid_export_entity": "Sensor fuer Netzeinspeisung",
-          "grid_import_entity": "Sensor fuer Netzbezug",
-          "consumption_entity": "Sensor fuer Hausverbrauch",
-          "battery_soc_entity": "Sensor fuer Batterie-Ladestand (Ampel)",
-          "pv_power_entity": "Sensor fuer aktuelle PV-Leistung (Ampel)",
-          "pv_forecast_entity": "Sensor fuer PV-Prognose (Ampel)",
+          "pv_production_entity": "Gesamt-kWh Zaehler der PV-Anlage",
+          "grid_export_entity": "Gesamt-kWh Zaehler Netzeinspeisung",
+          "grid_import_entity": "Gesamt-kWh Zaehler Netzbezug",
+          "consumption_entity": "Gesamt-kWh Zaehler Hausverbrauch",
+          "battery_soc_entity": "Aktueller Ladestand in % (fuer Verbrauchsempfehlung)",
+          "pv_power_entity": "Aktuelle PV-Leistung in Watt (fuer Verbrauchsempfehlung)",
+          "pv_forecast_entity": "Tagesprognose in kWh (fuer Verbrauchsempfehlung)",
           "battery_soc_high": "Ab diesem Wert gilt Batterie als voll",
           "battery_soc_low": "Unter diesem Wert gilt Batterie als leer",
-          "pv_power_high": "Ab diesem Wert gilt PV-Leistung als hoch",
+          "pv_peak_power": "Maximale Leistung der PV-Anlage (fuer Schwellwert-Berechnung)",
+          "winter_base_load": "Wird von PV abgezogen (Okt-Maerz), z.B. fuer Waermepumpe",
           "price_low_threshold": "Unter diesem Preis ist Strom guenstig",
           "price_high_threshold": "Ueber diesem Preis ist Strom teuer",
           "electricity_price_unit": "Euro oder Cent pro kWh",
@@ -106,9 +108,9 @@
           "feed_in_tariff_entity": "Sensor fuer dynamische Verguetung",
           "installation_cost": "Gesamtkosten der PV-Anlage",
           "installation_date": "Fuer Statistiken und Prognosen",
-          "savings_offset": "ACHTUNG: Entweder Euro-Offset ODER kWh-Offsets verwenden, nicht beides!",
-          "energy_offset_self_consumption": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktuellem Preis multipliziert",
-          "energy_offset_export": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktueller Verguetung multipliziert"
+          "epex_price_entity": "Aktueller EPEX Spot Preis (EPEX Spot Data Integration)",
+          "epex_quantile_entity": "Relative Position im Tagesverlauf (0=guenstigster, 1=teuerster)",
+          "solcast_forecast_entity": "PV-Prognose fuer heute (Solcast Integration)"
         }
       }
     }

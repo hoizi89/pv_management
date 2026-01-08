@@ -162,12 +162,22 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                # === ENERGIE-SENSOREN (kWh Totals, nicht Watt!) ===
+                # === ENERGIE-SENSOREN (kWh Totals) ===
+                vol.Required(CONF_PV_PRODUCTION_ENTITY, default=get_val(CONF_PV_PRODUCTION_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
                 vol.Optional(CONF_GRID_EXPORT_ENTITY, default=get_val(CONF_GRID_EXPORT_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
                 vol.Optional(CONF_GRID_IMPORT_ENTITY, default=get_val(CONF_GRID_IMPORT_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
                 vol.Optional(CONF_CONSUMPTION_ENTITY, default=get_val(CONF_CONSUMPTION_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+
+                # === EMPFEHLUNGS-SENSOREN ===
+                vol.Optional(CONF_BATTERY_SOC_ENTITY, default=get_val(CONF_BATTERY_SOC_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_POWER_ENTITY, default=get_val(CONF_PV_POWER_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_FORECAST_ENTITY, default=get_val(CONF_PV_FORECAST_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
                 # === AMORTISATION ===
@@ -181,16 +191,6 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Optional(CONF_INSTALLATION_DATE, default=get_val(CONF_INSTALLATION_DATE)):
                     selector.DateSelector(),
-
-                # Korrektur-Offset für Ersparnis (z.B. nach Rechnung)
-                vol.Optional(CONF_SAVINGS_OFFSET, default=get_val(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=-RANGE_OFFSET["max"], max=RANGE_OFFSET["max"], step=RANGE_OFFSET["step"],
-                            unit_of_measurement="€",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
 
                 # === PREISE ===
                 vol.Required(CONF_ELECTRICITY_PRICE_UNIT, default=get_val(CONF_ELECTRICITY_PRICE_UNIT, DEFAULT_ELECTRICITY_PRICE_UNIT)):
@@ -211,6 +211,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
+                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY, default=get_val(CONF_ELECTRICITY_PRICE_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
                 vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=get_val(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)):
                     selector.SelectSelector(
@@ -230,6 +232,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
+                vol.Optional(CONF_FEED_IN_TARIFF_ENTITY, default=get_val(CONF_FEED_IN_TARIFF_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
                 # === EMPFEHLUNGS-SCHWELLWERTE ===
                 vol.Optional(CONF_BATTERY_SOC_HIGH, default=get_val(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)):
