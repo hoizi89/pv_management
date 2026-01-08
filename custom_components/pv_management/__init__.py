@@ -1468,7 +1468,7 @@ class PVManagementController:
             )
             if not self._restored and self._total_self_consumption_kwh == 0:
                 _LOGGER.info(
-                    "Keine restored Daten gefunden nach 2s Wartezeit, initialisiere von Sensoren"
+                    "Keine restored Daten gefunden nach 60s Wartezeit, initialisiere von Sensoren"
                 )
                 self._initialize_from_sensors()
             elif self._restored:
@@ -1478,9 +1478,9 @@ class PVManagementController:
                     self._total_feed_in_kwh,
                 )
 
-        # Warte 2 Sekunden bevor wir prüfen - gibt genug Zeit für restore
+        # Warte 60 Sekunden bevor wir prüfen - Inverter-Integration braucht oft länger
         from homeassistant.helpers.event import async_call_later
-        async_call_later(self.hass, 2.0, delayed_init_check)
+        async_call_later(self.hass, 60.0, delayed_init_check)
 
         @callback
         def state_listener(event: Event):
