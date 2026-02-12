@@ -251,6 +251,122 @@ mode: single
 
 ---
 
+## GoodWe Wechselrichter Beispiele
+
+### 7. GoodWe Auto-Charge (Netzladen)
+
+```yaml
+alias: "PV: GoodWe Auto-Charge"
+description: "Lädt GoodWe Batterie vom Netz bei günstigem Strom"
+triggers:
+  - entity_id: binary_sensor.pv_management_auto_charge_empfohlen
+    trigger: state
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.pv_management_auto_charge_empfohlen
+            state: "on"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+            data:
+              option: eco_charge
+          - action: number.set_value
+            target:
+              entity_id: number.goodwe_eco_modus_ladeleistung
+            data:
+              value: "{{ states('sensor.pv_management_auto_charge_leistung') | int(3000) }}"
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.pv_management_auto_charge_empfohlen
+            state: "off"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+            data:
+              option: general
+mode: single
+```
+
+### 8. GoodWe Entlade-Steuerung
+
+```yaml
+alias: "PV: GoodWe Entlade-Steuerung"
+description: "Steuert Entladungstiefe basierend auf Strompreis"
+triggers:
+  - entity_id: binary_sensor.pv_management_entladung_empfehlung
+    trigger: state
+  - entity_id: switch.pv_management_entlade_steuerung
+    trigger: state
+actions:
+  - choose:
+      # Sommer-Modus oder Steuerung deaktiviert → Standard-Entladung
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: switch.pv_management_entlade_steuerung
+                state: "off"
+              - condition: template
+                value_template: >
+                  {{ state_attr('binary_sensor.pv_management_entladung_empfehlung', 'sommer_modus') == true }}
+        sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.goodwe_entladungstiefe_am_netz
+            data:
+              value: >
+                {{ 100 - state_attr('binary_sensor.pv_management_entladung_empfehlung', 'sommer_soc') | int(10) }}
+          - action: select.select_option
+            target:
+              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+            data:
+              option: general
+      # Entladung empfohlen → Batterie entladen lassen
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.pv_management_entladung_empfehlung
+            state: "on"
+        sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.goodwe_entladungstiefe_am_netz
+            data:
+              value: >
+                {{ 100 - state_attr('binary_sensor.pv_management_entladung_empfehlung', 'entladen_bis_soc') | int(20) }}
+          - action: select.select_option
+            target:
+              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+            data:
+              option: general
+      # Nicht entladen → Batterie aufsparen
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.pv_management_entladung_empfehlung
+            state: "off"
+        sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.goodwe_entladungstiefe_am_netz
+            data:
+              value: >
+                {{ 100 - state_attr('binary_sensor.pv_management_entladung_empfehlung', 'halten_soc') | int(90) }}
+          - action: select.select_option
+            target:
+              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+            data:
+              option: general
+mode: single
+```
+
+> **Hinweis:** GoodWe verwendet "Entladungstiefe" (DoD) statt SOC. Die Formel `100 - SOC` konvertiert zwischen beiden.
+
+---
+
 ## Sensoren
 
 ### Haupt-Sensoren
