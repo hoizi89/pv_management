@@ -153,6 +153,11 @@ class BaseEntity(SensorEntity):
         self._attr_device_info = get_device_info(name, device_type)
         self._removed = False
 
+    @property
+    def available(self) -> bool:
+        """Sensor ist erst verfügbar wenn gespeicherte Daten wiederhergestellt sind."""
+        return getattr(self.ctrl, "_restored", True)
+
     async def async_added_to_hass(self):
         self._removed = False
         self.ctrl.register_entity_listener(self._on_ctrl_update)
@@ -1294,8 +1299,8 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
     @property
     def available(self) -> bool:
-        """Sensor ist immer verfügbar."""
-        return True
+        """Sensor ist erst nach Datenwiederherstellung verfügbar."""
+        return super().available
 
 
 class NextCheapHourSensor(BaseEntity):
@@ -1353,8 +1358,8 @@ class NextCheapHourSensor(BaseEntity):
 
     @property
     def available(self) -> bool:
-        """Sensor ist verfügbar wenn EPEX konfiguriert ist."""
-        return True
+        """Sensor ist erst nach Datenwiederherstellung verfügbar."""
+        return super().available
 
 
 # =============================================================================
