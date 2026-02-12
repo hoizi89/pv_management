@@ -136,6 +136,10 @@ class PVManagementController:
         self._restored = False
         self._first_seen_date: date | None = None
 
+        # Notification Tracking (verhindert Spam)
+        self._milestones_fired: set[int] = set()
+        self._monthly_summary_month: int | None = None
+
         # Listener
         self._remove_listeners = []
         self._entity_listeners = []
@@ -1658,6 +1662,10 @@ class PVManagementController:
         # Sync to helper after every update
         self._sync_to_helper()
 
+        # Check for notifications
+        self._check_milestones()
+        self._check_monthly_summary()
+
     def _sync_to_helper(self) -> None:
         """Synchronisiert die Gesamtersparnis zum Helper."""
         if not self.amortisation_helper:
@@ -1718,6 +1726,70 @@ class PVManagementController:
             _LOGGER.warning("Restore from helper failed: %s", e)
 
         return False
+
+    def _check_milestones(self) -> None:
+        """Prüft und feuert Meilenstein-Events (25%, 50%, 75%, 100%)."""
+        if self.installation_cost <= 0:
+            return
+
+        percent = self.amortisation_percent
+        milestones = [25, 50, 75, 100]
+
+        for milestone in milestones:
+            if percent >= milestone and milestone not in self._milestones_fired:
+                self._milestones_fired.add(milestone)
+
+                if milestone == 100:
+                    profit = self.total_savings - self.installation_cost
+                    message = f"PV-Anlage vollständig amortisiert! +{profit:.2f}€ Gewinn!"
+                    event_type = "amortisation_complete"
+                else:
+                    message = f"{milestone}% der PV-Anlage amortisiert! Noch {self.remaining_cost:.2f}€ bis zur Amortisation."
+                    event_type = "amortisation_milestone"
+
+                self.hass.bus.async_fire("pv_management_event", {
+                    "type": event_type,
+                    "milestone": milestone,
+                    "total_savings": round(self.total_savings, 2),
+                    "remaining": round(self.remaining_cost, 2),
+                    "installation_cost": self.installation_cost,
+                    "message": message,
+                })
+                _LOGGER.info("Meilenstein erreicht: %s", message)
+
+    def _check_monthly_summary(self) -> None:
+        """Sendet monatliche Zusammenfassung am 1. des Monats."""
+        today = date.today()
+
+        # Nur am 1. des Monats und nur einmal pro Monat
+        if today.day != 1:
+            return
+        if self._monthly_summary_month == today.month:
+            return
+
+        self._monthly_summary_month = today.month
+
+        # Berechne Vormonat
+        from datetime import timedelta
+        last_month = today - timedelta(days=1)
+        month_name = last_month.strftime("%B %Y")
+
+        # Monatliche Werte (aus dem Tracking)
+        monthly_kwh = self._monthly_grid_import_kwh
+        monthly_cost = self._monthly_grid_import_cost
+
+        message = f"PV-Bericht {month_name}: {monthly_kwh:.0f} kWh Netzbezug, {self.amortisation_percent:.1f}% amortisiert"
+
+        self.hass.bus.async_fire("pv_management_event", {
+            "type": "monthly_summary",
+            "month": month_name,
+            "grid_import_kwh": round(monthly_kwh, 1),
+            "grid_import_cost": round(monthly_cost, 2),
+            "amortisation_percent": round(self.amortisation_percent, 1),
+            "total_savings": round(self.total_savings, 2),
+            "message": message,
+        })
+        _LOGGER.info("Monatliche Zusammenfassung: %s", message)
 
     def restore_state(self, data: dict[str, Any]) -> None:
         """Stellt den gespeicherten Zustand wieder her."""

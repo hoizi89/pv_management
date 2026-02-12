@@ -28,7 +28,13 @@ Home Assistant Integration für **variable Stromtarife** (Spot-Tarife wie aWATTa
 ### Amortisation
 - **Inkrementelle Berechnung** - Korrekt bei dynamischen Preisen
 - **Persistente Speicherung** - Daten bleiben nach Neustart
+- **Helper-Sync** - Speichert Werte in input_number für maximale Persistenz
 - **Fixpreis-Vergleich** - Zeigt Ersparnis gegenüber Fixpreis-Tarif
+
+### Benachrichtigungen (Events)
+- **Meilenstein-Events** - Automatische Events bei 25%, 50%, 75%, 100% Amortisation
+- **Monatliche Zusammenfassung** - Event am 1. jeden Monats mit Statistiken
+- Events können für eigene Automationen verwendet werden (`pv_management_event`)
 
 ### Statistiken
 - Ersparnis pro Tag/Monat/Jahr
@@ -290,7 +296,62 @@ mode: single
 
 ---
 
+## Events (Benachrichtigungen)
+
+Die Integration feuert `pv_management_event` Events, die für eigene Automationen verwendet werden können:
+
+### Meilenstein-Events
+```yaml
+event_type: pv_management_event
+event_data:
+  type: "amortisation_milestone"  # oder "amortisation_complete"
+  milestone: 50  # 25, 50, 75, 100
+  total_savings: 3500.00
+  remaining: 3500.00
+  installation_cost: 7000.00
+  message: "50% der PV-Anlage amortisiert!"
+```
+
+### Monatliche Zusammenfassung
+```yaml
+event_type: pv_management_event
+event_data:
+  type: "monthly_summary"
+  month: "Januar 2025"
+  grid_import_kwh: 180.5
+  grid_import_cost: 32.50
+  amortisation_percent: 52.3
+  total_savings: 3661.00
+  message: "PV-Bericht Januar 2025: 180 kWh Netzbezug, 52.3% amortisiert"
+```
+
+### Beispiel-Automatisierung
+
+```yaml
+alias: "PV Meilenstein Benachrichtigung"
+trigger:
+  - platform: event
+    event_type: pv_management_event
+    event_data:
+      type: amortisation_milestone
+action:
+  - service: notify.mobile_app
+    data:
+      title: "PV Meilenstein erreicht!"
+      message: "{{ trigger.event.data.message }}"
+```
+
+---
+
 ## Changelog
+
+### v3.17.0
+- **NEU: Helper-Sync** - Pflicht-Input_Number für persistente Speicherung der Ersparnis
+- **NEU: Meilenstein-Events** - Automatische Events bei 25%, 50%, 75%, 100% Amortisation
+- **NEU: Monatliche Zusammenfassung** - Event am 1. des Monats mit Statistiken
+
+### v3.16.0
+- Helper-Sync vorbereitet (Basis-Integration)
 
 ### v3.15.1
 - Batterie Target-SOC vereinheitlicht
