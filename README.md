@@ -16,6 +16,7 @@ Home Assistant integration for **variable electricity tariffs** (spot tariffs li
 - **EPEX Spot Integration** - Uses current market prices
 - **Solcast Integration** - Considers PV forecast
 - **Winter Mode** - Automatic adjustment Oct-Mar
+- **Inverter Examples** - Ready-to-use automations for GoodWe and other inverters
 
 ### Consumption Recommendation (Traffic Light)
 - **5-level traffic light** - From dark green to red
