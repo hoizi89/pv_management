@@ -3,93 +3,93 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/hoizi89/pv_management)](https://github.com/hoizi89/pv_management/releases)
 
-Home Assistant Integration für **variable Stromtarife** (Spot-Tarife wie aWATTar, smartENERGY, Tibber) mit **intelligentem Batterie-Management**.
+Home Assistant integration for **variable electricity tariffs** (spot tariffs like aWATTar, smartENERGY, Tibber) with **intelligent battery management**.
 
-> **Für Fixpreis-Tarife** (z.B. Grünwelt, Energie AG) gibt es eine vereinfachte Version:
-> 👉 [pv_management_fix](https://github.com/hoizi89/pv_management_fix)
+> **For fixed-price tariffs** (e.g. Gruenwelt, Energie AG) there's a simplified version:
+> [pv_management_fix](https://github.com/hoizi89/pv_management_fix)
 
 ## Features
 
-### Batterie-Management
-- **Auto-Charge** - Batterie automatisch laden wenn Strom günstig ist
-- **Discharge Control** - Batterie für teure Stunden aufsparen
-- **EPEX Spot Integration** - Nutzt aktuelle Börsenpreise
-- **Solcast Integration** - Berücksichtigt PV-Prognose
-- **Winter-Modus** - Automatische Anpassung Okt-März
+### Battery Management
+- **Auto-Charge** - Automatically charge battery when electricity is cheap
+- **Discharge Control** - Save battery for expensive hours
+- **EPEX Spot Integration** - Uses current market prices
+- **Solcast Integration** - Considers PV forecast
+- **Winter Mode** - Automatic adjustment Oct-Mar
 
-### Verbrauchsempfehlung (Ampel)
-- **5-stufige Ampel** - Von dunkelgrün bis rot
-- **Basiert auf:**
-  - Aktueller EPEX Spot Preis + Quantile
-  - Batterie-Ladestand
-  - PV-Leistung & Prognose
-  - Tageszeit (Winter-Grundlast)
+### Consumption Recommendation (Traffic Light)
+- **5-level traffic light** - From dark green to red
+- **Based on:**
+  - Current EPEX Spot price + quantile
+  - Battery state of charge
+  - PV power & forecast
+  - Time of day (winter base load)
 
-### Amortisation
-- **Inkrementelle Berechnung** - Korrekt bei dynamischen Preisen
-- **Persistente Speicherung** - Daten bleiben nach Neustart
-- **Helper-Sync** - Speichert Werte in input_number für maximale Persistenz
-- **Fixpreis-Vergleich** - Zeigt Ersparnis gegenüber Fixpreis-Tarif
+### Amortization
+- **Incremental calculation** - Correct for dynamic prices
+- **Persistent storage** - Data survives restarts
+- **Helper sync** - Stores values in input_number for maximum persistence
+- **Fixed price comparison** - Shows savings vs. fixed tariff
 
-### Benachrichtigungen (Events)
-- **Meilenstein-Events** - Automatische Events bei 25%, 50%, 75%, 100% Amortisation
-- **Monatliche Zusammenfassung** - Event am 1. jeden Monats mit Statistiken
-- Events können für eigene Automationen verwendet werden (`pv_management_event`)
+### Notifications (Events)
+- **Milestone events** - Automatic events at 25%, 50%, 75%, 100% amortization
+- **Monthly summary** - Event on 1st of each month with statistics
+- Events can be used for custom automations (`pv_management_event`)
 
-### Statistiken
-- Ersparnis pro Tag/Monat/Jahr
-- Durchschnittlicher Strompreis (gewichtet)
-- CO2-Ersparnis
-- Eigenverbrauchsquote & Autarkiegrad
+### Statistics
+- Savings per day/month/year
+- Average electricity price (weighted)
+- CO2 savings
+- Self-consumption ratio & autarky rate
 
 ## Installation
 
-### HACS (empfohlen)
+### HACS (recommended)
 
-1. HACS öffnen → Integrationen → 3-Punkte-Menü → **Benutzerdefinierte Repositories**
-2. URL eingeben: `https://github.com/hoizi89/pv_management`
-3. Kategorie: **Integration**
-4. "PV Management" suchen und installieren
-5. Home Assistant **neu starten**
+1. Open HACS > Integrations > 3-dot menu > **Custom repositories**
+2. Enter URL: `https://github.com/hoizi89/pv_management`
+3. Category: **Integration**
+4. Search for "PV Management" and install
+5. **Restart** Home Assistant
 
-### Manuell
+### Manual
 
-1. `custom_components/pv_management` Ordner nach `config/custom_components/` kopieren
-2. Home Assistant neu starten
+1. Copy `custom_components/pv_management` folder to `config/custom_components/`
+2. Restart Home Assistant
 
-## Konfiguration
+## Configuration
 
-### Pflicht-Sensoren
-| Sensor | Beschreibung |
-|--------|--------------|
-| **PV Produktion** | Gesamte PV-Produktion in kWh |
+### Required Sensors
+| Sensor | Description |
+|--------|-------------|
+| **PV Production** | Total PV production in kWh |
 
-### Empfohlene Sensoren
-| Sensor | Beschreibung |
-|--------|--------------|
-| **EPEX Spot Preis** | Aktueller Strompreis (z.B. von EPEX Spot Integration) |
-| **EPEX Quantile** | Relative Position im Tagesverlauf (0-1) |
-| **Batterie SOC** | Aktueller Ladestand in % |
-| **Solcast Prognose** | PV-Prognose für heute in kWh |
+### Recommended Sensors
+| Sensor | Description |
+|--------|-------------|
+| **EPEX Spot Price** | Current electricity price (e.g. from EPEX Spot integration) |
+| **EPEX Quantile** | Relative position in daily range (0-1) |
+| **Battery SOC** | Current state of charge in % |
+| **Solcast Forecast** | PV forecast for today in kWh |
 
-### Batterie-Steuerung (Options)
-| Einstellung | Standard | Beschreibung |
-|-------------|----------|--------------|
-| **Ziel-SOC** | 100% | Batterie bis hierhin laden |
-| **Auto-Charge Quantile** | 0.3 | Laden wenn Preis in günstigsten 30% |
-| **Min. Preisdifferenz** | 15 ct | Nur laden wenn Spread groß genug |
-| **Discharge Quantile** | 0.7 | Entladen nur in teuersten 30% |
-| **Winter-Modus** | Ein | Nur Okt-März aktiv |
+### Battery Control (Options)
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Target SOC** | 100% | Charge battery up to this level |
+| **Auto-Charge Quantile** | 0.3 | Charge when price is in cheapest 30% |
+| **Min. Price Difference** | 15 ct | Only charge when spread is large enough |
+| **Discharge Quantile** | 0.7 | Discharge only in most expensive 30% |
+| **Winter Mode** | On | Only active Oct-Mar |
 
 ---
 
-## Beispiel-Automatisierungen
+## Example Automations
 
-### 1. Batterie laden bei günstigem Strom (Auto-Charge)
+### 1. Charge Battery When Cheap (Auto-Charge)
 
 ```yaml
-alias: "PV: Batterie laden wenn günstig"
-description: "Lädt die Batterie vom Netz wenn der Strom günstig ist"
+alias: "PV: Charge battery when cheap"
+description: "Charges battery from grid when electricity is cheap"
 trigger:
   - platform: state
     entity_id: binary_sensor.pv_management_auto_charge_empfohlen
@@ -97,23 +97,23 @@ trigger:
 action:
   - service: number.set_value
     target:
-      entity_id: number.batterie_ladeleistung  # Dein Wechselrichter
+      entity_id: number.battery_charge_power  # Your inverter
     data:
-      value: 3000  # 3kW Ladeleistung
+      value: 3000  # 3kW charge power
   - service: switch.turn_on
     target:
-      entity_id: switch.batterie_netzladen  # Dein Wechselrichter
+      entity_id: switch.battery_grid_charge  # Your inverter
   - service: notify.mobile_app
     data:
-      message: "Batterie wird geladen (Strom günstig: {{ states('sensor.epex_spot_at_price') }} ct/kWh)"
+      message: "Battery charging (cheap electricity: {{ states('sensor.epex_spot_at_price') }} ct/kWh)"
 mode: single
 ```
 
-### 2. Batterie-Laden stoppen
+### 2. Stop Battery Charging
 
 ```yaml
-alias: "PV: Batterie laden stoppen"
-description: "Stoppt das Netzladen wenn nicht mehr empfohlen"
+alias: "PV: Stop battery charging"
+description: "Stops grid charging when no longer recommended"
 trigger:
   - platform: state
     entity_id: binary_sensor.pv_management_auto_charge_empfohlen
@@ -121,20 +121,20 @@ trigger:
 action:
   - service: switch.turn_off
     target:
-      entity_id: switch.batterie_netzladen
+      entity_id: switch.battery_grid_charge
   - service: number.set_value
     target:
-      entity_id: number.batterie_ladeleistung
+      entity_id: number.battery_charge_power
     data:
       value: 0
 mode: single
 ```
 
-### 3. Batterie-Entladung bei teurem Strom begrenzen
+### 3. Limit Battery Discharge for Expensive Hours
 
 ```yaml
-alias: "PV: Batterie für teuren Strom aufsparen"
-description: "Verhindert Entladung bei günstigem Strom (für später aufsparen)"
+alias: "PV: Save battery for expensive hours"
+description: "Prevents discharge during cheap hours (save for later)"
 trigger:
   - platform: state
     entity_id: binary_sensor.pv_management_entladung_begrenzen
@@ -142,20 +142,20 @@ trigger:
 action:
   - service: number.set_value
     target:
-      entity_id: number.batterie_entlade_grenze  # Min. SOC am Wechselrichter
+      entity_id: number.battery_discharge_limit  # Min SOC on inverter
     data:
-      value: "{{ states('sensor.pv_management_halte_soc') }}"  # z.B. 80%
+      value: "{{ states('sensor.pv_management_halte_soc') }}"  # e.g. 80%
   - service: notify.mobile_app
     data:
-      message: "Batterie wird für teure Stunden aufgespart (Halte-SOC: {{ states('sensor.pv_management_halte_soc') }}%)"
+      message: "Battery saved for expensive hours (Hold SOC: {{ states('sensor.pv_management_halte_soc') }}%)"
 mode: single
 ```
 
-### 4. Batterie-Entladung wieder freigeben
+### 4. Release Battery Discharge
 
 ```yaml
-alias: "PV: Batterie Entladung freigeben"
-description: "Gibt die Batterie wieder frei wenn Strom teuer ist"
+alias: "PV: Release battery discharge"
+description: "Releases battery when electricity is expensive"
 trigger:
   - platform: state
     entity_id: binary_sensor.pv_management_entladung_begrenzen
@@ -163,17 +163,17 @@ trigger:
 action:
   - service: number.set_value
     target:
-      entity_id: number.batterie_entlade_grenze
+      entity_id: number.battery_discharge_limit
     data:
-      value: 10  # Normale Entladegrenze (10%)
+      value: 10  # Normal discharge limit (10%)
 mode: single
 ```
 
-### 5. Komplette Batterie-Automatisierung (Blueprint-Style)
+### 5. Complete Battery Automation (Blueprint-Style)
 
 ```yaml
-alias: "PV: Intelligentes Batterie-Management"
-description: "Kombiniert Auto-Charge und Discharge Control"
+alias: "PV: Intelligent Battery Management"
+description: "Combines Auto-Charge and Discharge Control"
 trigger:
   - platform: state
     entity_id:
@@ -181,18 +181,18 @@ trigger:
       - binary_sensor.pv_management_entladung_begrenzen
 action:
   - choose:
-      # Auto-Charge aktivieren
+      # Activate Auto-Charge
       - conditions:
           - condition: state
             entity_id: binary_sensor.pv_management_auto_charge_empfohlen
             state: "on"
         sequence:
-          - service: script.batterie_netzladen_starten
+          - service: script.battery_grid_charge_start
             data:
-              leistung: "{{ states('sensor.pv_management_auto_charge_leistung') | int }}"
-              ziel_soc: "{{ states('sensor.pv_management_ziel_soc') | int }}"
+              power: "{{ states('sensor.pv_management_auto_charge_leistung') | int }}"
+              target_soc: "{{ states('sensor.pv_management_ziel_soc') | int }}"
 
-      # Entladung begrenzen (Batterie aufsparen)
+      # Limit discharge (save battery)
       - conditions:
           - condition: state
             entity_id: binary_sensor.pv_management_entladung_begrenzen
@@ -201,11 +201,11 @@ action:
             entity_id: binary_sensor.pv_management_auto_charge_empfohlen
             state: "off"
         sequence:
-          - service: script.batterie_halte_soc_setzen
+          - service: script.battery_set_hold_soc
             data:
               soc: "{{ states('sensor.pv_management_halte_soc') | int }}"
 
-      # Alles normal (kein Auto-Charge, keine Begrenzung)
+      # Normal operation (no auto-charge, no limit)
       - conditions:
           - condition: state
             entity_id: binary_sensor.pv_management_auto_charge_empfohlen
@@ -214,18 +214,18 @@ action:
             entity_id: binary_sensor.pv_management_entladung_begrenzen
             state: "off"
         sequence:
-          - service: script.batterie_normal_betrieb
+          - service: script.battery_normal_operation
 mode: restart
 ```
 
-### 6. Waschmaschine bei günstigem Strom starten
+### 6. Start Washing Machine When Cheap
 
 ```yaml
-alias: "PV: Waschmaschine bei günstigem Strom"
-description: "Startet Waschmaschine wenn Ampel grün ist"
+alias: "PV: Washing machine when cheap"
+description: "Starts washing machine when traffic light is green"
 trigger:
   - platform: state
-    entity_id: input_boolean.waschmaschine_warten
+    entity_id: input_boolean.washing_machine_waiting
     to: "on"
 condition:
   - condition: or
@@ -239,25 +239,25 @@ condition:
 action:
   - service: switch.turn_on
     target:
-      entity_id: switch.waschmaschine_steckdose
+      entity_id: switch.washing_machine_socket
   - service: input_boolean.turn_off
     target:
-      entity_id: input_boolean.waschmaschine_warten
+      entity_id: input_boolean.washing_machine_waiting
   - service: notify.mobile_app
     data:
-      message: "Waschmaschine gestartet - Strom ist günstig!"
+      message: "Washing machine started - electricity is cheap!"
 mode: single
 ```
 
 ---
 
-## GoodWe Wechselrichter Beispiele
+## GoodWe Inverter Examples
 
-### 7. GoodWe Auto-Charge (Netzladen)
+### 7. GoodWe Auto-Charge (Grid Charging)
 
 ```yaml
 alias: "PV: GoodWe Auto-Charge"
-description: "Lädt GoodWe Batterie vom Netz bei günstigem Strom"
+description: "Charges GoodWe battery from grid when electricity is cheap"
 triggers:
   - entity_id: binary_sensor.pv_management_auto_charge_empfohlen
     trigger: state
@@ -271,12 +271,12 @@ actions:
         sequence:
           - action: select.select_option
             target:
-              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+              entity_id: select.goodwe_inverter_operation_mode
             data:
               option: eco_charge
           - action: number.set_value
             target:
-              entity_id: number.goodwe_eco_modus_ladeleistung
+              entity_id: number.goodwe_eco_mode_charge_power
             data:
               value: "{{ states('sensor.pv_management_auto_charge_leistung') | int(3000) }}"
       - conditions:
@@ -286,17 +286,17 @@ actions:
         sequence:
           - action: select.select_option
             target:
-              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+              entity_id: select.goodwe_inverter_operation_mode
             data:
               option: general
 mode: single
 ```
 
-### 8. GoodWe Entlade-Steuerung
+### 8. GoodWe Discharge Control
 
 ```yaml
-alias: "PV: GoodWe Entlade-Steuerung"
-description: "Steuert Entladungstiefe basierend auf Strompreis"
+alias: "PV: GoodWe Discharge Control"
+description: "Controls depth of discharge based on electricity price"
 triggers:
   - entity_id: binary_sensor.pv_management_entladung_empfehlung
     trigger: state
@@ -304,7 +304,7 @@ triggers:
     trigger: state
 actions:
   - choose:
-      # Sommer-Modus oder Steuerung deaktiviert → Standard-Entladung
+      # Summer mode or control disabled -> standard discharge
       - conditions:
           - condition: or
             conditions:
@@ -317,16 +317,16 @@ actions:
         sequence:
           - action: number.set_value
             target:
-              entity_id: number.goodwe_entladungstiefe_am_netz
+              entity_id: number.goodwe_depth_of_discharge_on_grid
             data:
               value: >
                 {{ 100 - state_attr('binary_sensor.pv_management_entladung_empfehlung', 'sommer_soc') | int(10) }}
           - action: select.select_option
             target:
-              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+              entity_id: select.goodwe_inverter_operation_mode
             data:
               option: general
-      # Entladung empfohlen → Batterie entladen lassen
+      # Discharge recommended -> allow battery discharge
       - conditions:
           - condition: state
             entity_id: binary_sensor.pv_management_entladung_empfehlung
@@ -334,16 +334,16 @@ actions:
         sequence:
           - action: number.set_value
             target:
-              entity_id: number.goodwe_entladungstiefe_am_netz
+              entity_id: number.goodwe_depth_of_discharge_on_grid
             data:
               value: >
                 {{ 100 - state_attr('binary_sensor.pv_management_entladung_empfehlung', 'entladen_bis_soc') | int(20) }}
           - action: select.select_option
             target:
-              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+              entity_id: select.goodwe_inverter_operation_mode
             data:
               option: general
-      # Nicht entladen → Batterie aufsparen
+      # Don't discharge -> save battery
       - conditions:
           - condition: state
             entity_id: binary_sensor.pv_management_entladung_empfehlung
@@ -351,100 +351,101 @@ actions:
         sequence:
           - action: number.set_value
             target:
-              entity_id: number.goodwe_entladungstiefe_am_netz
+              entity_id: number.goodwe_depth_of_discharge_on_grid
             data:
               value: >
                 {{ 100 - state_attr('binary_sensor.pv_management_entladung_empfehlung', 'halten_soc') | int(90) }}
           - action: select.select_option
             target:
-              entity_id: select.goodwe_betriebsmodus_des_wechselrichters
+              entity_id: select.goodwe_inverter_operation_mode
             data:
               option: general
 mode: single
 ```
 
-> **Hinweis:** GoodWe verwendet "Entladungstiefe" (DoD) statt SOC. Die Formel `100 - SOC` konvertiert zwischen beiden.
+> **Note:** GoodWe uses "Depth of Discharge" (DoD) instead of SOC. The formula `100 - SOC` converts between them.
 
 ---
 
-## Sensoren
+## Sensors
 
-### Haupt-Sensoren
-| Sensor | Beschreibung |
-|--------|--------------|
-| **Verbrauchsempfehlung** | 5-stufige Ampel (dark_green/green/yellow/orange/red) |
-| **Nächste günstige Stunde** | Wann ist der nächste günstige Zeitpunkt |
-| **Auto-Charge Empfohlen** | Binary Sensor für Automatisierung |
-| **Entladung begrenzen** | Binary Sensor für Automatisierung |
-| **Ziel-SOC** | Aktueller Ziel-Ladestand |
-| **Halte-SOC** | Minimaler SOC während Halte-Phase |
+### Main Sensors
+| Sensor | Description |
+|--------|-------------|
+| **Consumption Recommendation** | 5-level traffic light (dark_green/green/yellow/orange/red) |
+| **Next Cheap Hour** | When is the next cheap time slot |
+| **Auto-Charge Recommended** | Binary sensor for automation |
+| **Limit Discharge** | Binary sensor for automation |
+| **Target SOC** | Current target state of charge |
+| **Hold SOC** | Minimum SOC during hold phase |
 
-### Amortisation
-| Sensor | Beschreibung |
-|--------|--------------|
-| **Amortisation** | Prozent abbezahlt |
-| **Gesamtersparnis** | Euro gespart |
-| **Restbetrag** | Euro bis Amortisation |
-| **Spot vs Fixpreis** | Ersparnis gegenüber Fixpreis |
+### Amortization
+| Sensor | Description |
+|--------|-------------|
+| **Amortization** | Percentage paid off |
+| **Total Savings** | EUR saved |
+| **Remaining Amount** | EUR until amortization |
+| **Spot vs Fixed** | Savings vs. fixed price |
 
-### Statistik
-| Sensor | Beschreibung |
-|--------|--------------|
-| **Durchschnittspreis** | Gewichteter Ø-Strompreis |
-| **Ersparnis pro Tag/Monat/Jahr** | Durchschnittswerte |
-| **CO2 Ersparnis** | kg CO2 eingespart |
+### Statistics
+| Sensor | Description |
+|--------|-------------|
+| **Average Price** | Weighted average electricity price |
+| **Savings per Day/Month/Year** | Average values |
+| **CO2 Savings** | kg CO2 saved |
 
 ---
 
-## Vergleich: pv_management vs pv_management_fix
+## Comparison: pv_management vs pv_management_fix
 
 | Feature | pv_management | pv_management_fix |
 |---------|:-------------:|:-----------------:|
-| **Zielgruppe** | Spot-Tarife | Fixpreis-Tarife |
-| Amortisation | ✅ | ✅ |
-| Energie-Tracking | ✅ | ✅ |
-| **Empfehlungsampel** | ✅ 5-stufig | ❌ |
-| **Auto-Charge** | ✅ | ❌ |
-| **Discharge Control** | ✅ | ❌ |
-| **EPEX Quantile** | ✅ | ❌ |
-| **Solcast** | ✅ | ❌ |
-| Spot-Vergleich | ✅ | ✅ (optional) |
+| **Target** | Spot tariffs | Fixed-price tariffs |
+| Amortization | Yes | Yes |
+| Energy Tracking | Yes | Yes |
+| **Recommendation Signal** | Yes (5-level) | No |
+| **Auto-Charge** | Yes | No |
+| **Discharge Control** | Yes | No |
+| **EPEX Quantile** | Yes | No |
+| **Solcast** | Yes | No |
+| **Electricity Quota** | No | Yes |
+| Spot Comparison | Yes | Yes (optional) |
 
 ---
 
-## Events (Benachrichtigungen)
+## Events (Notifications)
 
-Die Integration feuert `pv_management_event` Events, die für eigene Automationen verwendet werden können:
+The integration fires `pv_management_event` events for custom automations:
 
-### Meilenstein-Events
+### Milestone Events
 ```yaml
 event_type: pv_management_event
 event_data:
-  type: "amortisation_milestone"  # oder "amortisation_complete"
+  type: "amortisation_milestone"  # or "amortisation_complete"
   milestone: 50  # 25, 50, 75, 100
   total_savings: 3500.00
   remaining: 3500.00
   installation_cost: 7000.00
-  message: "50% der PV-Anlage amortisiert!"
+  message: "50% of PV system amortized!"
 ```
 
-### Monatliche Zusammenfassung
+### Monthly Summary
 ```yaml
 event_type: pv_management_event
 event_data:
   type: "monthly_summary"
-  month: "Januar 2025"
+  month: "January 2025"
   grid_import_kwh: 180.5
   grid_import_cost: 32.50
   amortisation_percent: 52.3
   total_savings: 3661.00
-  message: "PV-Bericht Januar 2025: 180 kWh Netzbezug, 52.3% amortisiert"
+  message: "PV report January 2025: 180 kWh grid import, 52.3% amortized"
 ```
 
-### Beispiel-Automatisierung
+### Example Automation
 
 ```yaml
-alias: "PV Meilenstein Benachrichtigung"
+alias: "PV Milestone Notification"
 trigger:
   - platform: event
     event_type: pv_management_event
@@ -453,7 +454,7 @@ trigger:
 action:
   - service: notify.mobile_app
     data:
-      title: "PV Meilenstein erreicht!"
+      title: "PV Milestone reached!"
       message: "{{ trigger.event.data.message }}"
 ```
 
@@ -462,36 +463,37 @@ action:
 ## Changelog
 
 ### v3.17.0
-- **NEU: Helper-Sync** - Pflicht-Input_Number für persistente Speicherung der Ersparnis
-- **NEU: Meilenstein-Events** - Automatische Events bei 25%, 50%, 75%, 100% Amortisation
-- **NEU: Monatliche Zusammenfassung** - Event am 1. des Monats mit Statistiken
+- **NEW: Helper Sync** - Required input_number for persistent savings storage
+- **NEW: Milestone Events** - Automatic events at 25%, 50%, 75%, 100% amortization
+- **NEW: Monthly Summary** - Event on 1st of each month with statistics
+- **NEW: GoodWe Examples** - Automation examples for GoodWe inverters
 
 ### v3.16.0
-- Helper-Sync vorbereitet (Basis-Integration)
+- Helper sync prepared (base integration)
 
 ### v3.15.1
-- Batterie Target-SOC vereinheitlicht
-- Discharge Control verbessert
+- Battery Target-SOC unified
+- Discharge Control improved
 
 ### v3.0.0
-- Auto-Charge Feature
-- Discharge Control Feature
-- EPEX Quantile Integration
-- Solcast Integration
+- Auto-Charge feature
+- Discharge Control feature
+- EPEX Quantile integration
+- Solcast integration
 
 ### v2.0.0
-- Verbrauchsempfehlungs-Ampel
-- Batterie-Integration
-- PV-Prognose-Integration
+- Consumption recommendation traffic light
+- Battery integration
+- PV forecast integration
 
 ### v1.0.0
-- Initiales Release
-- Amortisationsberechnung
+- Initial release
+- Amortization calculation
 
 ## Support
 
-[Issues melden](https://github.com/hoizi89/pv_management/issues)
+[Report issues](https://github.com/hoizi89/pv_management/issues)
 
-## Lizenz
+## License
 
-MIT License - siehe [LICENSE](LICENSE)
+MIT License - see [LICENSE](LICENSE)
