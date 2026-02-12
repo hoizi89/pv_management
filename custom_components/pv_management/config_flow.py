@@ -22,6 +22,7 @@ from .const import (
     CONF_BATTERY_TARGET_SOC,  # Gemeinsame Einstellung für Ziel/Halte-SOC
     CONF_DISCHARGE_WINTER_ONLY, CONF_DISCHARGE_PRICE_QUANTILE,
     CONF_DISCHARGE_ALLOW_SOC, CONF_DISCHARGE_SUMMER_SOC,
+    CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,  # NEU: Helper Sync
     CONF_FIXED_PRICE_COMPARE,  # NEU: Fixpreis-Vergleich
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
@@ -117,6 +118,12 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                     ),
                 vol.Optional(CONF_INSTALLATION_DATE): selector.DateSelector(),
+
+                # === AMORTISATION HELPER (Pflicht für Persistenz) ===
+                vol.Required(CONF_AMORTISATION_HELPER): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="input_number")
+                ),
+                vol.Optional(CONF_RESTORE_FROM_HELPER, default=False): selector.BooleanSelector(),
             })
         )
 
@@ -152,6 +159,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 "sensors": "Sensoren",
                 "prices": "Strompreise",
                 "integrations": "Integrationen (EPEX/Solcast)",
+                "helper": "Amortisation Helper",
                 "battery": "Batterie-Steuerung",
                 "advanced": "Erweiterte Einstellungen",
                 "save": "Speichern & Schließen",
@@ -257,6 +265,26 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_INSTALLATION_DATE, default=self._get_val(CONF_INSTALLATION_DATE)):
                     selector.DateSelector(),
             })
+        )
+
+    async def async_step_helper(self, user_input=None):
+        """Amortisation Helper konfigurieren."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="helper",
+            data_schema=vol.Schema({
+                vol.Required(CONF_AMORTISATION_HELPER, default=self._get_val(CONF_AMORTISATION_HELPER)):
+                    selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="input_number")
+                    ),
+                vol.Optional(CONF_RESTORE_FROM_HELPER, default=self._get_val(CONF_RESTORE_FROM_HELPER, False)):
+                    selector.BooleanSelector(),
+            }),
+            description_placeholders={
+                "info": "Der Helper speichert die Gesamtersparnis (EUR) unabhängig von der Integration."
+            }
         )
 
     async def async_step_integrations(self, user_input=None):

@@ -28,6 +28,7 @@ from .const import (
     CONF_BATTERY_TARGET_SOC,  # Gemeinsame Einstellung für Ziel/Halte-SOC
     CONF_DISCHARGE_ENABLED, CONF_DISCHARGE_WINTER_ONLY, CONF_DISCHARGE_PRICE_QUANTILE,
     CONF_DISCHARGE_ALLOW_SOC, CONF_DISCHARGE_SUMMER_SOC,
+    CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,  # NEU: Helper Sync
     CONF_FIXED_PRICE_COMPARE,  # NEU: Fixpreis-Vergleich
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
@@ -210,6 +211,10 @@ class PVManagementController:
 
         # Fixpreis-Vergleich (ct/kWh → €/kWh)
         self.fixed_price_compare = opts.get(CONF_FIXED_PRICE_COMPARE, DEFAULT_FIXED_PRICE_COMPARE) / 100.0
+
+        # Amortisation Helper (Pflicht für Persistenz)
+        self.amortisation_helper = opts.get(CONF_AMORTISATION_HELPER)
+        self.restore_from_helper = opts.get(CONF_RESTORE_FROM_HELPER, False)
 
         # Aliase für Rückwärtskompatibilität
         self.auto_charge_target_soc = self.battery_target_soc
@@ -1650,6 +1655,70 @@ class PVManagementController:
             except Exception as e:
                 _LOGGER.debug("Entity-Listener Fehler (ignoriert): %s", e)
 
+        # Sync to helper after every update
+        self._sync_to_helper()
+
+    def _sync_to_helper(self) -> None:
+        """Synchronisiert die Gesamtersparnis zum Helper."""
+        if not self.amortisation_helper:
+            return
+
+        try:
+            current_savings = self.total_savings
+            state = self.hass.states.get(self.amortisation_helper)
+
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    helper_value = float(state.state)
+                    # Nur updaten wenn sich der Wert signifikant geändert hat (> 0.01 EUR)
+                    if abs(helper_value - current_savings) > 0.01:
+                        self.hass.async_create_task(
+                            self.hass.services.async_call(
+                                "input_number",
+                                "set_value",
+                                {
+                                    "entity_id": self.amortisation_helper,
+                                    "value": round(current_savings, 2),
+                                },
+                            )
+                        )
+                        _LOGGER.debug(
+                            "Amortisation Helper synced: %.2f EUR → %s",
+                            current_savings, self.amortisation_helper
+                        )
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Helper sync error: %s", e)
+        except Exception as e:
+            _LOGGER.debug("Helper sync failed (ignoriert): %s", e)
+
+    async def _restore_from_helper(self) -> bool:
+        """Stellt die Gesamtersparnis vom Helper wieder her."""
+        if not self.amortisation_helper or not self.restore_from_helper:
+            return False
+
+        try:
+            state = self.hass.states.get(self.amortisation_helper)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                helper_value = float(state.state)
+
+                if helper_value > 0:
+                    _LOGGER.info(
+                        "Restoring from helper %s: %.2f EUR",
+                        self.amortisation_helper, helper_value
+                    )
+
+                    # Setze den Offset so, dass total_savings dem Helper entspricht
+                    current_accumulated = self._accumulated_savings_self + self._accumulated_earnings_feed
+                    self.savings_offset = max(0, helper_value - current_accumulated)
+
+                    self._restored = True
+                    self._notify_entities()
+                    return True
+        except (ValueError, TypeError) as e:
+            _LOGGER.warning("Restore from helper failed: %s", e)
+
+        return False
+
     def restore_state(self, data: dict[str, Any]) -> None:
         """Stellt den gespeicherten Zustand wieder her."""
         # Sichere Float-Konvertierung
@@ -2152,6 +2221,12 @@ class PVManagementController:
             self._restored,
             self._total_self_consumption_kwh,
         )
+
+        # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
+        if self.restore_from_helper and self.amortisation_helper:
+            restored = await self._restore_from_helper()
+            if restored:
+                _LOGGER.info("Amortisation erfolgreich von Helper wiederhergestellt")
 
         # NICHT sofort initialisieren! Warte bis restore_state() sicher gelaufen ist.
         # Verwende async_call_later für robustere Verzögerung.

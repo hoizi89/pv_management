@@ -104,6 +104,10 @@ DEFAULT_AUTO_CHARGE_POWER: Final[float] = 3000.0  # W - Ladeleistung beim Auto-C
 # Gemeinsamer Default für Ziel/Halte-SOC
 DEFAULT_BATTERY_TARGET_SOC: Final[float] = 100.0  # % - Ziel-SOC für Laden UND Halten
 
+# --- Amortisation Helper Sync -------------------------------------------------
+CONF_AMORTISATION_HELPER: Final[str] = "amortisation_helper"
+CONF_RESTORE_FROM_HELPER: Final[str] = "restore_from_helper"
+
 # --- Fixpreis-Vergleich -------------------------------------------------------
 CONF_FIXED_PRICE_COMPARE: Final[str] = "fixed_price_compare"  # Fixpreis zum Vergleich (ct/kWh)
 
