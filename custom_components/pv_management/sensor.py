@@ -104,10 +104,12 @@ async def async_setup_entry(
         InstallationCostSensor(ctrl, name),
         ConfigurationDiagnosticSensor(ctrl, name, entry),
 
-        # === STROMPREIS-DURCHSCHNITT ===
+        # === TÄGLICHE STROMKOSTEN ===
+        DailyFeedInSensor(ctrl, name),
+        DailyGridImportSensor(ctrl, name),
         DailyNetElectricityCostSensor(ctrl, name),
-        DailyAverageElectricityPriceSensor(ctrl, name),
-        MonthlyAverageElectricityPriceSensor(ctrl, name),
+
+        # === STROMPREIS-DURCHSCHNITT ===
         AverageElectricityPriceSensor(ctrl, name),
         TotalGridImportCostSensor(ctrl, name),
         SpotVsFixedPriceSensor(ctrl, name),  # NEU: Vergleich Spot vs. Fixpreis
@@ -1368,71 +1370,58 @@ class NextCheapHourSensor(BaseEntity):
 # =============================================================================
 
 
-class DailyAverageElectricityPriceSensor(BaseEntity):
-    """
-    Täglicher gewichteter Durchschnittsstrompreis in ct/kWh.
-
-    Wird jeden Tag um Mitternacht zurückgesetzt.
-    """
+class DailyFeedInSensor(BaseEntity):
+    """Einspeisung heute: Vergütung und Menge."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
             ctrl,
             name,
-            "Strompreis Heute",
-            unit="ct/kWh",
-            icon="mdi:calendar-today",
+            "Einspeisung Heute",
+            unit="€",
+            icon="mdi:transmission-tower-export",
             state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
 
     @property
-    def native_value(self) -> float | None:
-        avg = self.ctrl.daily_average_price_ct
-        if avg is None:
-            return None
-        return round(avg, 2)
+    def native_value(self) -> float:
+        return round(self.ctrl.daily_feed_in_earnings, 2)
 
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "verbrauch_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
-            "kosten_eur": round(self.ctrl.daily_grid_import_cost, 2),
-            "beschreibung": "Gewichteter Durchschnitt für heute",
+            "menge_kwh": round(self.ctrl.daily_feed_in_kwh, 2),
+            "vergütung_ct": f"{self.ctrl.current_feed_in_tariff * 100:.2f}",
         }
 
 
-class MonthlyAverageElectricityPriceSensor(BaseEntity):
-    """
-    Monatlicher gewichteter Durchschnittsstrompreis in ct/kWh.
-
-    Wird am Monatsersten zurückgesetzt.
-    """
+class DailyGridImportSensor(BaseEntity):
+    """Netzbezug heute: Kosten und Verbrauch."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
             ctrl,
             name,
-            "Strompreis Monat",
-            unit="ct/kWh",
-            icon="mdi:calendar-month",
+            "Netzbezug Heute",
+            unit="€",
+            icon="mdi:transmission-tower-import",
             state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
 
     @property
-    def native_value(self) -> float | None:
-        avg = self.ctrl.monthly_average_price_ct
-        if avg is None:
-            return None
-        return round(avg, 2)
+    def native_value(self) -> float:
+        return round(self.ctrl.daily_grid_import_cost, 2)
 
     @property
     def extra_state_attributes(self) -> dict:
+        avg = self.ctrl.daily_average_price_ct
         return {
-            "verbrauch_kwh": round(self.ctrl.monthly_grid_import_kwh, 2),
-            "kosten_eur": round(self.ctrl.monthly_grid_import_cost, 2),
-            "beschreibung": "Gewichteter Durchschnitt für diesen Monat",
+            "verbrauch_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
+            "durchschnitt_ct": round(avg, 2) if avg else None,
         }
 
 
@@ -1474,13 +1463,13 @@ class AverageElectricityPriceSensor(BaseEntity):
 
 
 class DailyNetElectricityCostSensor(BaseEntity):
-    """Tägliche Netto-Stromkosten: Einkauf minus Einspeisung."""
+    """Netto-Stromkosten heute: Netzbezug minus Einspeisung."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
             ctrl,
             name,
-            "Stromkosten Heute",
+            "Stromkosten Netto Heute",
             unit="€",
             icon="mdi:cash-register",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1495,9 +1484,8 @@ class DailyNetElectricityCostSensor(BaseEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "einkauf_eur": round(self.ctrl.daily_grid_import_cost, 2),
+            "netzbezug_eur": round(self.ctrl.daily_grid_import_cost, 2),
             "einspeisung_eur": round(self.ctrl.daily_feed_in_earnings, 2),
-            "einkauf_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
         }
 
 
