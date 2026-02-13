@@ -110,6 +110,8 @@ async def async_setup_entry(
         DailyNetElectricityCostSensor(ctrl, name),
 
         # === STROMPREIS-DURCHSCHNITT ===
+        DailyAveragePriceSensor(ctrl, name),
+        MonthlyAveragePriceSensor(ctrl, name),
         AverageElectricityPriceSensor(ctrl, name),
         TotalGridImportCostSensor(ctrl, name),
         SpotVsFixedPriceSensor(ctrl, name),  # NEU: Vergleich Spot vs. Fixpreis
@@ -1425,6 +1427,50 @@ class DailyGridImportSensor(BaseEntity):
         }
 
 
+class DailyAveragePriceSensor(BaseEntity):
+    """Durchschnittlich bezahlter Strompreis heute in ct/kWh."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Ø Strompreis Heute",
+            unit="ct/kWh",
+            icon="mdi:calendar-today",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_PRICES,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        avg = self.ctrl.daily_average_price_ct
+        if avg is None:
+            return None
+        return round(avg, 2)
+
+
+class MonthlyAveragePriceSensor(BaseEntity):
+    """Durchschnittlich bezahlter Strompreis diesen Monat in ct/kWh."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Ø Strompreis Monat",
+            unit="ct/kWh",
+            icon="mdi:calendar-month",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_PRICES,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        avg = self.ctrl.monthly_average_price_ct
+        if avg is None:
+            return None
+        return round(avg, 2)
+
+
 class AverageElectricityPriceSensor(BaseEntity):
     """
     Gesamter gewichteter Durchschnittsstrompreis in ct/kWh.
@@ -1437,7 +1483,7 @@ class AverageElectricityPriceSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Strompreis Gesamt",
+            "Ø Strompreis Gesamt",
             unit="ct/kWh",
             icon="mdi:chart-line",
             state_class=SensorStateClass.MEASUREMENT,
