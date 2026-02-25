@@ -58,84 +58,163 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Management Optionen",
-        "description": "Passe die Einstellungen an. Sensoren koennen nachtraeglich geaendert werden ohne Datenverlust.",
+        "title": "PV Management Settings",
+        "description": "Choose a category to configure.",
+        "menu_options": {
+          "sensors": "Sensors",
+          "prices": "Electricity Prices",
+          "integrations": "Integrations (EPEX/Solcast)",
+          "helper": "Amortization Helper",
+          "battery": "Battery Control",
+          "advanced": "Advanced Settings",
+          "benchmark": "Energy Benchmark",
+          "save": "Save & Close"
+        }
+      },
+      "sensors": {
+        "title": "Energy Sensors",
+        "description": "Configure energy sensors for PV, grid, and battery.",
         "data": {
-          "pv_production_entity": "PV Produktion Sensor",
-          "grid_export_entity": "Netzeinspeisung Sensor",
-          "grid_import_entity": "Netzbezug Sensor",
-          "consumption_entity": "Hausverbrauch Sensor",
-          "battery_soc_entity": "Batterie-Ladestand Sensor",
-          "pv_power_entity": "PV-Leistung Sensor",
-          "pv_forecast_entity": "PV-Prognose Sensor",
-          "battery_soc_high": "Batterie 'voll' Schwelle (%)",
-          "battery_soc_low": "Batterie 'leer' Schwelle (%)",
-          "pv_power_high": "PV 'hoch' Schwelle (W)",
-          "price_low_threshold": "Preis 'guenstig' Schwelle",
-          "price_high_threshold": "Preis 'teuer' Schwelle",
-          "electricity_price_unit": "Strompreis-Einheit",
-          "electricity_price": "Strompreis (Fallback)",
-          "electricity_price_entity": "Dynamischer Strompreis Sensor",
-          "feed_in_tariff_unit": "Einspeiseverguetung-Einheit",
-          "feed_in_tariff": "Einspeiseverguetung (Fallback)",
-          "feed_in_tariff_entity": "Dynamische Einspeiseverguetung Sensor",
-          "installation_cost": "Anschaffungskosten",
-          "installation_date": "Installationsdatum",
-          "savings_offset": "Ersparnis-Offset",
-          "energy_offset_self_consumption": "Eigenverbrauch-Offset (kWh)",
-          "energy_offset_export": "Einspeisung-Offset (kWh)",
-          "pv_peak_power": "PV Peak Power (W)",
-          "winter_base_load": "Winter Base Load (W)",
-          "epex_price_entity": "EPEX Spot Price Sensor",
-          "epex_quantile_entity": "EPEX Quantile Sensor",
-          "solcast_forecast_entity": "Solcast Forecast Sensor",
-          "auto_charge_winter_only": "Auto-Charge: Winter Only",
-          "auto_charge_pv_threshold": "Auto-Charge: PV Forecast Threshold",
-          "auto_charge_price_quantile": "Auto-Charge: Price Quantile Threshold",
-          "auto_charge_min_soc": "Auto-Charge: Min Battery SOC",
-          "auto_charge_target_soc": "Auto-Charge: Target Battery SOC",
-          "auto_charge_min_price_diff": "Auto-Charge: Min Price Difference",
-          "auto_charge_power": "Auto-Charge: Charge Power",
-          "fixed_price_compare": "Fixed Price Comparison (ct/kWh)"
+          "pv_production_entity": "PV Production (kWh)",
+          "grid_export_entity": "Grid Export (kWh)",
+          "grid_import_entity": "Grid Import (kWh)",
+          "consumption_entity": "Household Consumption (kWh)",
+          "battery_soc_entity": "Battery SOC (%)",
+          "pv_power_entity": "Current PV Power (W)",
+          "pv_forecast_entity": "PV Forecast (kWh)"
         },
         "data_description": {
-          "pv_production_entity": "Sensor fuer PV-Produktion in kWh",
-          "grid_export_entity": "Sensor fuer Netzeinspeisung",
-          "grid_import_entity": "Sensor fuer Netzbezug",
-          "consumption_entity": "Sensor fuer Hausverbrauch",
-          "battery_soc_entity": "Sensor fuer Batterie-Ladestand (Ampel)",
-          "pv_power_entity": "Sensor fuer aktuelle PV-Leistung (Ampel)",
-          "pv_forecast_entity": "Sensor fuer PV-Prognose (Ampel)",
-          "battery_soc_high": "Ab diesem Wert gilt Batterie als voll",
-          "battery_soc_low": "Unter diesem Wert gilt Batterie als leer",
-          "pv_power_high": "Ab diesem Wert gilt PV-Leistung als hoch",
-          "price_low_threshold": "Unter diesem Preis ist Strom guenstig",
-          "price_high_threshold": "Ueber diesem Preis ist Strom teuer",
-          "electricity_price_unit": "Euro oder Cent pro kWh",
-          "electricity_price": "Wird verwendet wenn Sensor nicht verfuegbar",
-          "electricity_price_entity": "Sensor fuer dynamischen Strompreis",
-          "feed_in_tariff_unit": "Euro oder Cent pro kWh",
-          "feed_in_tariff": "Wird verwendet wenn Sensor nicht verfuegbar",
-          "feed_in_tariff_entity": "Sensor fuer dynamische Verguetung",
-          "installation_cost": "Gesamtkosten der PV-Anlage",
-          "installation_date": "Fuer Statistiken und Prognosen",
-          "savings_offset": "ACHTUNG: Entweder Euro-Offset ODER kWh-Offsets verwenden, nicht beides!",
-          "energy_offset_self_consumption": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktuellem Preis multipliziert",
-          "energy_offset_export": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktueller Verguetung multipliziert",
-          "pv_peak_power": "Peak power of your PV system in Watt (e.g. 10000 for 10kWp)",
-          "winter_base_load": "Winter base load subtracted from PV (e.g. heat pump)",
-          "epex_price_entity": "EPEX Spot electricity price sensor",
-          "epex_quantile_entity": "EPEX Quantile sensor (0=cheapest, 1=most expensive price of the day)",
-          "solcast_forecast_entity": "Solcast PV forecast sensor for today",
-          "auto_charge_winter_only": "If enabled, Auto-Charge only active in winter (October to March)",
-          "auto_charge_pv_threshold": "Below this PV forecast, charging is recommended",
-          "auto_charge_price_quantile": "Below this quantile value, price is cheap enough to charge",
-          "auto_charge_min_soc": "Only charge if battery is below this SOC",
-          "auto_charge_target_soc": "Target SOC when auto-charging",
-          "auto_charge_min_price_diff": "Only charge if difference between cheapest and most expensive price is at least this",
-          "auto_charge_power": "Charge power for auto-charge",
-          "fixed_price_compare": "Fixed price to compare against (e.g. Energie AG offer). Shows savings vs spot tariff."
+          "pv_production_entity": "Total PV production in kWh (rising counter)",
+          "grid_export_entity": "Grid export in kWh (rising counter)",
+          "grid_import_entity": "Grid import in kWh (rising counter)",
+          "consumption_entity": "Total consumption in kWh (rising counter)",
+          "battery_soc_entity": "Current battery state of charge in percent",
+          "pv_power_entity": "Current PV power in Watt (for recommendation)",
+          "pv_forecast_entity": "Daily PV forecast in kWh (for recommendation)"
         }
+      },
+      "prices": {
+        "title": "Electricity Prices & Amortization",
+        "description": "Configure electricity price, feed-in tariff, and installation cost.",
+        "data": {
+          "electricity_price_unit": "Electricity Price Unit",
+          "electricity_price": "Electricity Price (Fallback)",
+          "electricity_price_entity": "Dynamic Electricity Price Sensor",
+          "feed_in_tariff_unit": "Feed-in Tariff Unit",
+          "feed_in_tariff": "Feed-in Tariff (Fallback)",
+          "feed_in_tariff_entity": "Dynamic Feed-in Tariff Sensor",
+          "fixed_price_compare": "Fixed Price Comparison",
+          "installation_cost": "Installation Cost",
+          "installation_date": "Installation Date"
+        },
+        "data_description": {
+          "electricity_price_unit": "Euro or Cent per kWh",
+          "electricity_price": "Used when no sensor is configured",
+          "electricity_price_entity": "Optional: Sensor for dynamic electricity price (e.g. EPEX)",
+          "feed_in_tariff_unit": "Euro or Cent per kWh",
+          "feed_in_tariff": "Used when no sensor is configured",
+          "feed_in_tariff_entity": "Optional: Sensor for dynamic feed-in tariff",
+          "fixed_price_compare": "Fixed price for comparison (e.g. provider offer). Shows savings vs spot tariff.",
+          "installation_cost": "Total cost of PV system in Euro",
+          "installation_date": "For statistics and forecasts"
+        }
+      },
+      "integrations": {
+        "title": "Integrations",
+        "description": "Connect with EPEX Spot and Solcast for better recommendations.",
+        "data": {
+          "epex_price_entity": "EPEX Spot Price",
+          "epex_quantile_entity": "EPEX Quantile",
+          "solcast_forecast_entity": "Solcast Forecast"
+        },
+        "data_description": {
+          "epex_price_entity": "Current EPEX Spot electricity price sensor",
+          "epex_quantile_entity": "EPEX Quantile (0=cheapest, 1=most expensive price of the day)",
+          "solcast_forecast_entity": "Solcast PV forecast for today in kWh"
+        }
+      },
+      "helper": {
+        "title": "Amortization Helper",
+        "description": "The helper stores total savings (EUR) independently of the integration.",
+        "data": {
+          "amortisation_helper": "Amortization Helper (input_number)",
+          "restore_from_helper": "Restore from Helper"
+        },
+        "data_description": {
+          "amortisation_helper": "input_number entity for persistent savings storage",
+          "restore_from_helper": "Restore savings value from the helper on next restart"
+        }
+      },
+      "battery": {
+        "title": "Battery Control",
+        "description": "Auto-Charge (grid charging at cheap prices) and Discharge Control (save battery for expensive hours).",
+        "data": {
+          "battery_target_soc": "Target/Hold SOC",
+          "auto_charge_winter_only": "Auto-Charge: Winter Only",
+          "auto_charge_pv_threshold": "Auto-Charge: PV Threshold",
+          "auto_charge_price_quantile": "Auto-Charge: Price Quantile",
+          "auto_charge_min_price_diff": "Auto-Charge: Min. Price Difference",
+          "auto_charge_min_soc": "Auto-Charge: Min. SOC (Start)",
+          "auto_charge_power": "Auto-Charge: Charge Power",
+          "discharge_winter_only": "Discharge: Winter Only",
+          "discharge_price_quantile": "Discharge: Price Quantile",
+          "discharge_allow_soc": "Discharge: Min. SOC (expensive)",
+          "discharge_summer_soc": "Discharge: Summer SOC"
+        },
+        "data_description": {
+          "battery_target_soc": "Charge battery up to this level AND hold at this level during cheap prices",
+          "auto_charge_winter_only": "Only charge from October to March (PV is sufficient in summer)",
+          "auto_charge_pv_threshold": "Below this PV forecast, charging is recommended",
+          "auto_charge_price_quantile": "0=cheapest, 1=most expensive. At 0.2 only charge in cheapest 20%",
+          "auto_charge_min_price_diff": "Min. difference cheap/expensive in ct/kWh (charging losses!)",
+          "auto_charge_min_soc": "Only start grid charging when battery is BELOW this value",
+          "auto_charge_power": "Grid charging power in Watt",
+          "discharge_winter_only": "Only active from October to March",
+          "discharge_price_quantile": "0=cheapest, 1=most expensive. At 0.7 only discharge in most expensive 30%",
+          "discharge_allow_soc": "Battery can discharge down to this level when electricity is expensive",
+          "discharge_summer_soc": "Normal discharge in summer (April-September)"
+        }
+      },
+      "advanced": {
+        "title": "Advanced Settings",
+        "description": "Thresholds for the recommendation traffic light and PV system configuration.",
+        "data": {
+          "pv_peak_power": "PV Peak Power",
+          "winter_base_load": "Winter Base Load",
+          "battery_soc_high": "Battery 'Full' Threshold",
+          "battery_soc_low": "Battery 'Empty' Threshold",
+          "price_low_threshold": "Price 'Cheap' Threshold",
+          "price_high_threshold": "Price 'Expensive' Threshold"
+        },
+        "data_description": {
+          "pv_peak_power": "Peak power of your PV system in Watt (e.g. 10000 for 10kWp)",
+          "winter_base_load": "Base load in winter (e.g. heat pump) - subtracted from available PV",
+          "battery_soc_high": "Above this value, battery is considered full (for traffic light)",
+          "battery_soc_low": "Below this value, battery is considered empty (for traffic light)",
+          "price_low_threshold": "Below this price, electricity is considered cheap (for traffic light)",
+          "price_high_threshold": "Above this price, electricity is considered expensive (for traffic light)"
+        }
+      },
+      "benchmark": {
+        "title": "Energy Benchmark",
+        "description": "Compare your consumption with the average for your country.",
+        "data": {
+          "benchmark_enabled": "Enable Benchmark",
+          "benchmark_country": "Country",
+          "benchmark_household_size": "Household Size (persons)",
+          "benchmark_heatpump": "Heat Pump Present",
+          "benchmark_heatpump_entity": "Heat Pump Energy Sensor (kWh)"
+        },
+        "data_description": {
+          "benchmark_country": "Reference data: E-Control (AT), BDEW (DE), BFE (CH)",
+          "benchmark_household_size": "Number of persons in household",
+          "benchmark_heatpump": "When active, heat pump consumption is benchmarked separately",
+          "benchmark_heatpump_entity": "Total kWh counter of heat pump (optional, for fair comparison)"
+        }
+      },
+      "save": {
+        "title": "Save",
+        "description": "All changes will be saved."
       }
     }
   },

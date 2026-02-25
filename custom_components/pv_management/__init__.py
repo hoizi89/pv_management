@@ -45,6 +45,11 @@ from .const import (
     DEFAULT_FIXED_PRICE_COMPARE,  # NEU
     PRICE_UNIT_CENT,
     RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_ORANGE, RECOMMENDATION_RED,
+    CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
+    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY,
+    DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
+    DEFAULT_BENCHMARK_HEATPUMP,
+    BENCHMARK_CONSUMPTION, BENCHMARK_HEATPUMP_CONSUMPTION, BENCHMARK_CO2_FACTORS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -225,6 +230,13 @@ class PVManagementController:
         # Aliase für Rückwärtskompatibilität
         self.auto_charge_target_soc = self.battery_target_soc
         self.discharge_hold_soc = self.battery_target_soc
+
+        # Benchmark
+        self.benchmark_enabled = opts.get(CONF_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_ENABLED)
+        self.benchmark_household_size = opts.get(CONF_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE)
+        self.benchmark_country = opts.get(CONF_BENCHMARK_COUNTRY, DEFAULT_BENCHMARK_COUNTRY)
+        self.benchmark_heatpump = opts.get(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)
+        self.benchmark_heatpump_entity = opts.get(CONF_BENCHMARK_HEATPUMP_ENTITY)
 
     @property
     def is_winter(self) -> bool:
@@ -1229,6 +1241,115 @@ class PVManagementController:
     def co2_saved_kg(self) -> float:
         """Eingesparte CO2-Emissionen in kg."""
         return self.self_consumption_kwh * CO2_FACTOR_GRID
+
+    # --- Benchmark Properties -------------------------------------------------
+
+    @property
+    def benchmark_avg_consumption_kwh(self) -> int:
+        """Reference household consumption (without heat pump) from BENCHMARK_CONSUMPTION."""
+        country_data = BENCHMARK_CONSUMPTION.get(self.benchmark_country, BENCHMARK_CONSUMPTION["AT"])
+        size = max(1, min(6, self.benchmark_household_size))
+        return country_data.get(size, country_data[3])
+
+    @property
+    def benchmark_avg_heatpump_kwh(self) -> int | None:
+        """Reference heat pump consumption. Only if benchmark_heatpump is True."""
+        if not self.benchmark_heatpump:
+            return None
+        return BENCHMARK_HEATPUMP_CONSUMPTION.get(self.benchmark_country, 4000)
+
+    @property
+    def benchmark_own_annual_consumption_kwh(self) -> float | None:
+        """Own household consumption extrapolated to 1 year."""
+        days = self.days_since_installation
+        if days < 7:
+            return None
+
+        # Total consumption from sensor totals
+        self_consumption = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
+        total = self_consumption + self._grid_import_kwh
+
+        if total <= 0:
+            return None
+
+        # Subtract heat pump consumption if entity configured
+        if self.benchmark_heatpump and self.benchmark_heatpump_entity:
+            hp_val, available = self._get_entity_value(self.benchmark_heatpump_entity, 0.0)
+            if available and hp_val > 0:
+                total = max(0, total - hp_val)
+
+        return (total / days) * 365
+
+    @property
+    def benchmark_own_heatpump_kwh(self) -> float | None:
+        """Own heat pump consumption extrapolated to 1 year."""
+        if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
+            return None
+        days = self.days_since_installation
+        if days < 7:
+            return None
+        hp_val, available = self._get_entity_value(self.benchmark_heatpump_entity, 0.0)
+        if not available or hp_val <= 0:
+            return None
+        return (hp_val / days) * 365
+
+    @property
+    def benchmark_consumption_vs_avg(self) -> float | None:
+        """Percentage difference: own vs average. Negative = better."""
+        own = self.benchmark_own_annual_consumption_kwh
+        avg = self.benchmark_avg_consumption_kwh
+        if own is None or avg <= 0:
+            return None
+        return ((own - avg) / avg) * 100
+
+    @property
+    def benchmark_co2_avoided_kg(self) -> float | None:
+        """CO2 avoided by PV per year in kg."""
+        days = self.days_since_installation
+        if days < 7 or self._pv_production_kwh <= 0:
+            return None
+        daily_pv = self._pv_production_kwh / days
+        co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, 0.3)
+        return daily_pv * 365 * co2_factor
+
+    @property
+    def benchmark_efficiency_score(self) -> int | None:
+        """Efficiency score 0-100."""
+        comparison = self.benchmark_consumption_vs_avg
+        autarky = self.autarky_rate
+        sc_ratio = self.self_consumption_ratio
+
+        if comparison is None:
+            return None
+
+        # Consumption vs average (40 points): -50% or better = 40, +50% or worse = 0
+        consumption_score = max(0, min(40, int(40 * (1 - (comparison + 50) / 100))))
+
+        # Autarky rate (30 points)
+        autarky_score = 0
+        if autarky is not None:
+            autarky_score = min(30, int(autarky * 0.3))
+
+        # Self-consumption ratio (30 points)
+        sc_score = min(30, int(sc_ratio * 0.3))
+
+        return max(0, min(100, consumption_score + autarky_score + sc_score))
+
+    @property
+    def benchmark_rating(self) -> str | None:
+        """Text rating based on efficiency score."""
+        score = self.benchmark_efficiency_score
+        if score is None:
+            return None
+        if score >= 80:
+            return "Hervorragend"
+        if score >= 60:
+            return "Sehr gut"
+        if score >= 40:
+            return "Gut"
+        if score >= 20:
+            return "Durchschnittlich"
+        return "Verbesserungspotenzial"
 
     @property
     def days_since_installation(self) -> int:
@@ -2441,8 +2562,17 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
         if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
             ctrl = hass.data[DOMAIN][entry.entry_id].get(DATA_CTRL)
             if ctrl:
+                # Check if structural changes require reload
+                old_benchmark = ctrl.benchmark_enabled
+                old_heatpump = ctrl.benchmark_heatpump
+
                 ctrl._load_options()
                 ctrl._notify_entities()
                 _LOGGER.info("PV Management Optionen aktualisiert")
+
+                # Reload if benchmark enabled/disabled or heatpump toggled
+                if ctrl.benchmark_enabled != old_benchmark or ctrl.benchmark_heatpump != old_heatpump:
+                    _LOGGER.info("Benchmark config changed, reloading integration")
+                    await hass.config_entries.async_reload(entry.entry_id)
     except Exception as e:
         _LOGGER.error("Fehler beim Aktualisieren der Optionen: %s", e)

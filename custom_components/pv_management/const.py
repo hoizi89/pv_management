@@ -147,3 +147,40 @@ RECOMMENDATION_GREEN: Final[str] = "green"
 RECOMMENDATION_YELLOW: Final[str] = "yellow"
 RECOMMENDATION_ORANGE: Final[str] = "orange"
 RECOMMENDATION_RED: Final[str] = "red"
+
+# --- Benchmark ----------------------------------------------------------------
+CONF_BENCHMARK_ENABLED: Final[str] = "benchmark_enabled"
+CONF_BENCHMARK_HOUSEHOLD_SIZE: Final[str] = "benchmark_household_size"
+CONF_BENCHMARK_COUNTRY: Final[str] = "benchmark_country"
+CONF_BENCHMARK_HEATPUMP: Final[str] = "benchmark_heatpump"
+CONF_BENCHMARK_HEATPUMP_ENTITY: Final[str] = "benchmark_heatpump_entity"
+
+DEFAULT_BENCHMARK_ENABLED: Final[bool] = False
+DEFAULT_BENCHMARK_HOUSEHOLD_SIZE: Final[int] = 3
+DEFAULT_BENCHMARK_COUNTRY: Final[str] = "AT"
+DEFAULT_BENCHMARK_HEATPUMP: Final[bool] = False
+
+# Average annual household electricity consumption WITHOUT heat pump per household size (kWh/year)
+# Sources: E-Control (AT), BDEW (DE), BFE (CH) — 2023/2024 data
+BENCHMARK_CONSUMPTION: Final[dict[str, dict[int, int]]] = {
+    "AT": {1: 2200, 2: 3500, 3: 4000, 4: 4500, 5: 5500, 6: 6500},
+    "DE": {1: 2000, 2: 3200, 3: 3900, 4: 4400, 5: 5400, 6: 6300},
+    "CH": {1: 2500, 2: 3800, 3: 4400, 4: 5000, 5: 6000, 6: 7000},
+}
+
+# Average heat pump electricity consumption (kWh/year) — single-family home
+# Sources: Austrian Energy Agency, BDEW heat pump study 2023
+BENCHMARK_HEATPUMP_CONSUMPTION: Final[dict[str, int]] = {
+    "AT": 4000,
+    "DE": 4500,
+    "CH": 3500,
+}
+
+# CO2 factor electricity mix (kg CO2/kWh) — Umweltbundesamt AT/DE, BFE CH
+BENCHMARK_CO2_FACTORS: Final[dict[str, float]] = {
+    "AT": 0.150,
+    "DE": 0.380,
+    "CH": 0.030,
+}
+
+RANGE_HOUSEHOLD_SIZE: Final[dict] = {"min": 1, "max": 6, "step": 1}

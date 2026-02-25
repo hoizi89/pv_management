@@ -26,9 +26,10 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Geräte-Typen für bessere Übersicht
-DEVICE_MAIN = "main"        # PV Management (Haupt)
-DEVICE_BATTERY = "battery"  # PV Batterie
-DEVICE_PRICES = "prices"    # PV Strompreise
+DEVICE_MAIN = "main"            # PV Management (Haupt)
+DEVICE_BATTERY = "battery"      # PV Batterie
+DEVICE_PRICES = "prices"        # PV Strompreise
+DEVICE_BENCHMARK = "benchmark"  # Energie-Benchmark
 
 
 def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
@@ -47,6 +48,14 @@ def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
             name=f"{name} Strompreise",
             manufacturer="Custom",
             model="PV Management - Strompreise",
+            via_device=(DOMAIN, name),
+        )
+    elif device_type == DEVICE_BENCHMARK:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{name}_benchmark")},
+            name=f"{name} Energie-Benchmark",
+            manufacturer="Custom",
+            model="PV Management - Energie-Benchmark",
             via_device=(DOMAIN, name),
         )
     else:  # DEVICE_MAIN
@@ -124,6 +133,22 @@ async def async_setup_entry(
         AutoChargeConditionsSensor(ctrl, name),
         AutoChargeDiagnosticSensor(ctrl, name),
     ]
+
+    # === BENCHMARK (optional) ===
+    if ctrl.benchmark_enabled:
+        entities.extend([
+            BenchmarkAvgSensor(ctrl, name),
+            BenchmarkOwnSensor(ctrl, name),
+            BenchmarkComparisonSensor(ctrl, name),
+            BenchmarkCO2Sensor(ctrl, name),
+            BenchmarkScoreSensor(ctrl, name),
+            BenchmarkRatingSensor(ctrl, name),
+        ])
+        if ctrl.benchmark_heatpump:
+            entities.extend([
+                BenchmarkHeatpumpAvgSensor(ctrl, name),
+                BenchmarkHeatpumpOwnSensor(ctrl, name),
+            ])
 
     async_add_entities(entities)
 
@@ -1941,3 +1966,147 @@ class AutoChargeDiagnosticSensor(BaseEntity):
                 "batterie_sensor": bool(self.ctrl.battery_soc_entity),
             },
         }
+
+
+# =============================================================================
+# BENCHMARK SENSORS
+# =============================================================================
+
+class BenchmarkAvgSensor(BaseEntity):
+    """Reference average consumption for country/household size."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark Durchschnitt",
+                         unit="kWh/Jahr", icon="mdi:home-group",
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        return self.ctrl.benchmark_avg_consumption_kwh
+
+
+class BenchmarkOwnSensor(BaseEntity):
+    """Own household consumption extrapolated to 1 year."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark Eigener Verbrauch",
+                         unit="kWh/Jahr", icon="mdi:home-lightning-bolt",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        val = self.ctrl.benchmark_own_annual_consumption_kwh
+        return round(val) if val is not None else None
+
+
+class BenchmarkComparisonSensor(BaseEntity):
+    """Percentage difference vs. average."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark Vergleich",
+                         unit="%", icon="mdi:check-circle",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        val = self.ctrl.benchmark_consumption_vs_avg
+        return round(val, 1) if val is not None else None
+
+    @property
+    def icon(self):
+        val = self.ctrl.benchmark_consumption_vs_avg
+        if val is not None and val <= 0:
+            return "mdi:check-circle"
+        return "mdi:alert"
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "country": self.ctrl.benchmark_country,
+            "household_size": self.ctrl.benchmark_household_size,
+            "reference_kwh": self.ctrl.benchmark_avg_consumption_kwh,
+            "own_kwh": self.ctrl.benchmark_own_annual_consumption_kwh,
+            "heatpump_excluded": bool(self.ctrl.benchmark_heatpump and self.ctrl.benchmark_heatpump_entity),
+        }
+
+
+class BenchmarkCO2Sensor(BaseEntity):
+    """CO2 avoided by PV per year."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark CO2 Vermieden",
+                         unit="kg/Jahr", icon="mdi:molecule-co2",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        val = self.ctrl.benchmark_co2_avoided_kg
+        return round(val, 1) if val is not None else None
+
+
+class BenchmarkScoreSensor(BaseEntity):
+    """Efficiency score 0-100."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark Effizienz Score",
+                         unit="Punkte", icon="mdi:star-circle",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        return self.ctrl.benchmark_efficiency_score
+
+    @property
+    def icon(self):
+        score = self.ctrl.benchmark_efficiency_score
+        if score is not None:
+            if score >= 60:
+                return "mdi:star-circle"
+            if score >= 30:
+                return "mdi:star-half-full"
+        return "mdi:star-outline"
+
+
+class BenchmarkRatingSensor(BaseEntity):
+    """Text rating based on efficiency score."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark Bewertung",
+                         icon="mdi:trophy",
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        return self.ctrl.benchmark_rating
+
+
+class BenchmarkHeatpumpAvgSensor(BaseEntity):
+    """Reference heat pump consumption."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark WP Durchschnitt",
+                         unit="kWh/Jahr", icon="mdi:heat-pump",
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        return self.ctrl.benchmark_avg_heatpump_kwh
+
+
+class BenchmarkHeatpumpOwnSensor(BaseEntity):
+    """Own heat pump consumption extrapolated to 1 year."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Benchmark WP Verbrauch",
+                         unit="kWh/Jahr", icon="mdi:heat-pump-outline",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        val = self.ctrl.benchmark_own_heatpump_kwh
+        return round(val) if val is not None else None

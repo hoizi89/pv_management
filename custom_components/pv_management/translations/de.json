@@ -50,6 +50,7 @@
           "integrations": "Integrationen (EPEX/Solcast)",
           "battery": "Batterie-Steuerung",
           "advanced": "Erweiterte Einstellungen",
+          "benchmark": "Energie-Benchmark",
           "save": "Speichern & Schliessen"
         }
       },
@@ -143,6 +144,23 @@
           "discharge_price_quantile": "0=billigste, 1=teuerste. Bei 0.7 nur in teuersten 30% entladen",
           "discharge_allow_soc": "Batterie kann bis hierhin entladen werden wenn Strom teuer",
           "discharge_summer_soc": "Normale Entladung im Sommer (April-September)"
+        }
+      },
+      "benchmark": {
+        "title": "Energie-Benchmark",
+        "description": "Vergleiche deinen Verbrauch mit dem Durchschnitt fuer dein Land.",
+        "data": {
+          "benchmark_enabled": "Benchmark aktivieren",
+          "benchmark_country": "Land",
+          "benchmark_household_size": "Haushaltsgroesse (Personen)",
+          "benchmark_heatpump": "Waermepumpe vorhanden",
+          "benchmark_heatpump_entity": "Waermepumpe Energie-Sensor (kWh)"
+        },
+        "data_description": {
+          "benchmark_country": "Referenzdaten: E-Control (AT), BDEW (DE), BFE (CH)",
+          "benchmark_household_size": "Anzahl Personen im Haushalt",
+          "benchmark_heatpump": "Wenn aktiv wird der WP-Verbrauch separat benchmarkt",
+          "benchmark_heatpump_entity": "Gesamt-kWh Zaehler der Waermepumpe (optional, fuer fairen Vergleich)"
         }
       },
       "advanced": {

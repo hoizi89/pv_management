@@ -39,6 +39,10 @@ from .const import (
     DEFAULT_FIXED_PRICE_COMPARE,  # NEU
     RANGE_COST, RANGE_OFFSET, RANGE_BATTERY_SOC, RANGE_PV_POWER,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
+    CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
+    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY,
+    DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
+    DEFAULT_BENCHMARK_HEATPUMP, RANGE_HOUSEHOLD_SIZE,
 )
 
 
@@ -162,6 +166,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 "helper": "Amortisation Helper",
                 "battery": "Batterie-Steuerung",
                 "advanced": "Erweiterte Einstellungen",
+                "benchmark": "Energie-Benchmark",
                 "save": "Speichern & Schließen",
             },
         )
@@ -417,6 +422,46 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.01, unit_of_measurement="€/kWh", mode=selector.NumberSelectorMode.BOX)
                     ),
+            })
+        )
+
+    async def async_step_benchmark(self, user_input=None):
+        """Energie-Benchmark konfigurieren."""
+        if user_input is not None:
+            # Clean up optional entity if empty
+            if not user_input.get(CONF_BENCHMARK_HEATPUMP_ENTITY):
+                user_input.pop(CONF_BENCHMARK_HEATPUMP_ENTITY, None)
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="benchmark",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_BENCHMARK_ENABLED, default=self._get_val(CONF_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_ENABLED)):
+                    selector.BooleanSelector(),
+                vol.Optional(CONF_BENCHMARK_COUNTRY, default=self._get_val(CONF_BENCHMARK_COUNTRY, DEFAULT_BENCHMARK_COUNTRY)):
+                    selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(value="AT", label="Oesterreich"),
+                                selector.SelectOptionDict(value="DE", label="Deutschland"),
+                                selector.SelectOptionDict(value="CH", label="Schweiz"),
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                vol.Optional(CONF_BENCHMARK_HOUSEHOLD_SIZE, default=self._get_val(CONF_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_HOUSEHOLD_SIZE["min"],
+                            max=RANGE_HOUSEHOLD_SIZE["max"],
+                            step=RANGE_HOUSEHOLD_SIZE["step"],
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                vol.Optional(CONF_BENCHMARK_HEATPUMP, default=self._get_val(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)):
+                    selector.BooleanSelector(),
+                vol.Optional(CONF_BENCHMARK_HEATPUMP_ENTITY, default=self._get_val(CONF_BENCHMARK_HEATPUMP_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
             })
         )
 
