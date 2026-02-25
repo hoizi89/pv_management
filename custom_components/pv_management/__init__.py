@@ -157,6 +157,7 @@ class PVManagementController:
         self._string_last_kwh: dict[str, float | None] = {}
         self._string_tracked_kwh: dict[str, float] = {}
         self._string_first_seen_date: date | None = None
+        self._string_peak_w: dict[str, float] = {}
 
         # Listener
         self._remove_listeners = []
@@ -250,13 +251,15 @@ class PVManagementController:
         self.benchmark_heatpump_entity = opts.get(CONF_BENCHMARK_HEATPUMP_ENTITY)
 
         # PV-Strings
-        self.pv_strings = []  # list of (name, entity_id)
-        for name_key, entity_key in PV_STRING_CONFIGS:
+        self.pv_strings = []  # list of (name, energy_entity_id, power_entity_id_or_None)
+        for name_key, entity_key, power_key in PV_STRING_CONFIGS:
             s_name = opts.get(name_key, "").strip()
             s_entity = opts.get(entity_key)
+            s_power = opts.get(power_key)
             if s_name and s_entity:
-                self.pv_strings.append((s_name, s_entity))
-        self._string_entity_ids = {e for _, e in self.pv_strings}
+                self.pv_strings.append((s_name, s_entity, s_power))
+        self._string_entity_ids = {e for _, e, _ in self.pv_strings}
+        self._string_power_entity_ids = {p for _, _, p in self.pv_strings if p}
 
     @property
     def is_winter(self) -> bool:
@@ -2031,6 +2034,8 @@ class PVManagementController:
                 self._string_first_seen_date = date.fromisoformat(s_first) if isinstance(s_first, str) else s_first
             except (ValueError, TypeError):
                 pass
+        raw_peak = data.get("string_peak_w", {})
+        self._string_peak_w = {k: safe_float(v) for k, v in raw_peak.items()} if isinstance(raw_peak, dict) else {}
 
         first_seen = data.get("first_seen_date")
         if first_seen:
@@ -2182,6 +2187,7 @@ class PVManagementController:
             "wp_first_seen_date": self._wp_first_seen_date.isoformat() if self._wp_first_seen_date else None,
             "string_tracked_kwh": self._string_tracked_kwh,
             "string_first_seen_date": self._string_first_seen_date.isoformat() if self._string_first_seen_date else None,
+            "string_peak_w": self._string_peak_w,
         }
 
     def get_string_production_kwh(self, entity_id: str) -> float:
@@ -2202,6 +2208,23 @@ class PVManagementController:
         if total <= 0:
             return None
         return self._string_tracked_kwh.get(entity_id, 0.0) / total * 100
+
+    def get_string_peak_kw(self, power_entity_id: str) -> float | None:
+        """Peak-Leistung in kW (gerundet auf 1 Nachkommastelle)."""
+        if not power_entity_id:
+            return None
+        peak = self._string_peak_w.get(power_entity_id, 0.0)
+        return round(peak / 1000, 1) if peak > 0 else None
+
+    def get_string_efficiency(self, energy_entity_id: str, power_entity_id: str) -> float | None:
+        """Effizienz in kWh/kWp (Produktion / Peak)."""
+        if not power_entity_id:
+            return None
+        peak_kw = self._string_peak_w.get(power_entity_id, 0.0) / 1000
+        if peak_kw <= 0:
+            return None
+        tracked = self._string_tracked_kwh.get(energy_entity_id, 0.0)
+        return round(tracked / peak_kw, 1) if tracked > 0 else None
 
     def _load_epex_forecast(self, state) -> None:
         """Lädt EPEX Preisprognose aus verschiedenen Attributen."""
@@ -2441,6 +2464,13 @@ class PVManagementController:
             self._string_last_kwh[entity_id] = value
             self._notify_entities()
 
+        # PV-String Power Peak-Tracking
+        elif entity_id in self._string_power_entity_ids:
+            current_peak = self._string_peak_w.get(entity_id, 0.0)
+            if value > current_peak:
+                self._string_peak_w[entity_id] = value
+                self._notify_entities()
+
         if changed:
             self._process_energy_update()
         elif recommendation_changed:
@@ -2525,13 +2555,23 @@ class PVManagementController:
                     pass
 
         # PV-Strings initialisieren
-        for _, entity_id in self.pv_strings:
+        for _, entity_id, power_entity in self.pv_strings:
             state = self.hass.states.get(entity_id)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
                     self._string_last_kwh[entity_id] = float(state.state)
                 except (ValueError, TypeError):
                     pass
+            if power_entity:
+                p_state = self.hass.states.get(power_entity)
+                if p_state and p_state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                    try:
+                        val = float(p_state.state)
+                        current = self._string_peak_w.get(power_entity, 0.0)
+                        if val > current:
+                            self._string_peak_w[power_entity] = val
+                    except (ValueError, TypeError):
+                        pass
         if self.pv_strings and self._string_first_seen_date is None:
             self._string_first_seen_date = date.today()
 

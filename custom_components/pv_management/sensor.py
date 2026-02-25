@@ -161,12 +161,17 @@ async def async_setup_entry(
 
     # === PV-STRINGS (optional) ===
     if ctrl.pv_strings:
-        for i, (string_name, string_entity) in enumerate(ctrl.pv_strings):
+        for i, (string_name, string_entity, power_entity) in enumerate(ctrl.pv_strings):
             entities.extend([
-                PVStringSensor(ctrl, name, i, string_name, string_entity, "production"),
-                PVStringSensor(ctrl, name, i, string_name, string_entity, "daily"),
-                PVStringSensor(ctrl, name, i, string_name, string_entity, "percentage"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "production"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "daily"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "percentage"),
             ])
+            if power_entity:
+                entities.extend([
+                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "peak"),
+                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "efficiency"),
+                ])
 
     async_add_entities(entities)
 
@@ -224,8 +229,9 @@ class BaseEntity(SensorEntity):
 class PVStringSensor(BaseEntity):
     """Generischer Sensor für PV-String Vergleich."""
 
-    def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, sensor_type: str):
+    def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, power_entity_id: str | None, sensor_type: str):
         self._string_entity_id = entity_id
+        self._power_entity_id = power_entity_id
         self._sensor_type = sensor_type
 
         if sensor_type == "production":
@@ -237,6 +243,16 @@ class PVStringSensor(BaseEntity):
             key = f"{string_name} Tagesproduktion"
             unit = "kWh/Tag"
             icon = "mdi:weather-sunny"
+            state_class = SensorStateClass.MEASUREMENT
+        elif sensor_type == "peak":
+            key = f"{string_name} Peak"
+            unit = "kW"
+            icon = "mdi:solar-power-variant"
+            state_class = SensorStateClass.MEASUREMENT
+        elif sensor_type == "efficiency":
+            key = f"{string_name} Effizienz"
+            unit = "kWh/kWp"
+            icon = "mdi:speedometer"
             state_class = SensorStateClass.MEASUREMENT
         else:  # percentage
             key = f"{string_name} Anteil"
@@ -254,6 +270,12 @@ class PVStringSensor(BaseEntity):
         elif self._sensor_type == "daily":
             val = self.ctrl.get_string_daily_kwh(self._string_entity_id)
             return round(val, 2) if val is not None else None
+        elif self._sensor_type == "peak":
+            val = self.ctrl.get_string_peak_kw(self._power_entity_id)
+            return val
+        elif self._sensor_type == "efficiency":
+            val = self.ctrl.get_string_efficiency(self._string_entity_id, self._power_entity_id)
+            return val
         else:  # percentage
             val = self.ctrl.get_string_percentage(self._string_entity_id)
             return round(val, 1) if val is not None else None

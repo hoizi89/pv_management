@@ -21,7 +21,30 @@
 | **Amortization** | Real-time payback tracking with persistent storage |
 | **EPEX Spot** | Integrates current market prices and quantiles |
 | **Solcast** | Considers PV forecast for smart decisions |
+| **PV-Strings** | Compare up to 4 PV strings — production, peak power, efficiency (kWh/kWp) |
 | **Notifications** | Milestones, monthly summaries, custom automations |
+
+---
+
+## New in v3.21.5: PV-String Peak & Efficiency
+
+Compare your PV strings fairly — even with different module counts!
+
+- **Optional power sensor (W)** per string for automatic peak detection
+- **Peak sensor (kW):** Tracks the highest power output ever seen per string
+- **Efficiency sensor (kWh/kWp):** Production normalized by peak power — fair comparison regardless of string size
+- Peak values persist across HA restarts
+- Without power sensor: existing production/daily/percentage sensors work as before (no errors)
+
+| Sensor | What it shows | Example |
+|--------|--------------|---------|
+| Osten Produktion | Total tracked kWh | 670 kWh |
+| Osten Tagesproduktion | Average kWh per day | 4.5 kWh/day |
+| Osten Anteil | Share of total production | 35% |
+| **Osten Peak** | **Highest power ever recorded** | **3.2 kW** |
+| **Osten Effizienz** | **Production per kWp** | **209.4 kWh/kWp** |
+
+> Tip: A string with higher efficiency (kWh/kWp) performs better per installed capacity — useful for finding shading issues or optimal orientations.
 
 ---
 
@@ -125,6 +148,18 @@ Appears when enabled under Options > Energy Benchmark.
 | Benchmark HP Average | kWh/year | Reference HP consumption (only with HP) |
 | Benchmark HP Consumption | kWh/year | Your HP consumption (only with HP) |
 
+### Device: PV-Strings (optional)
+
+Appears when at least one PV string is configured under Options > PV-Strings.
+
+| Sensor | Unit | Description |
+|--------|------|-------------|
+| {Name} Produktion | kWh | Total tracked production for this string |
+| {Name} Tagesproduktion | kWh/day | Average daily production |
+| {Name} Anteil | % | Share of total string production |
+| {Name} Peak | kW | Highest power ever recorded (requires power sensor) |
+| {Name} Effizienz | kWh/kWp | Production per peak kW (requires power sensor) |
+
 ### Auto-Charge Sensors
 
 | Sensor | Description |
@@ -151,6 +186,7 @@ Under **Settings > Devices & Services > PV Management > Configure**:
 | **Battery Control** | Target SOC, Auto-Charge settings, Discharge Control settings |
 | **Advanced** | PV peak power, winter base load, traffic light thresholds |
 | **Energy Benchmark** | Country, household size, heat pump |
+| **PV-Strings** | Up to 4 strings with name, kWh sensor, and optional power sensor (W) |
 
 ---
 
@@ -421,6 +457,7 @@ action:
 | Amortization | Yes | Yes |
 | Energy Tracking | Yes | Yes |
 | **Energy Benchmark** | **Yes** | **Yes** |
+| **PV-Strings** | **Yes** | **Yes** |
 | **Recommendation Signal** | **Yes** (5-level) | No |
 | **Auto-Charge** | **Yes** | No |
 | **Discharge Control** | **Yes** | No |
@@ -437,6 +474,10 @@ For **fixed-price tariffs** with battery tracking, ROI, and electricity quota:
 ---
 
 ## Changelog
+
+### v3.21.5
+- **NEW: PV-String Peak & Efficiency** — Optional power sensor (W) per string for automatic peak tracking (kW) and efficiency calculation (kWh/kWp)
+- Fair comparison of strings with different module counts
 
 ### v3.21.0
 - **NEW: Energy Benchmark** — Compare with DACH averages (AT/DE/CH), CO2 savings, efficiency score 0-100

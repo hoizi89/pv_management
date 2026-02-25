@@ -218,22 +218,30 @@
         "data": {
           "pv_string_1_name": "String 1 Name",
           "pv_string_1_entity": "String 1 Sensor (kWh)",
+          "pv_string_1_power": "String 1 Leistung (W)",
           "pv_string_2_name": "String 2 Name",
           "pv_string_2_entity": "String 2 Sensor (kWh)",
+          "pv_string_2_power": "String 2 Leistung (W)",
           "pv_string_3_name": "String 3 Name",
           "pv_string_3_entity": "String 3 Sensor (kWh)",
+          "pv_string_3_power": "String 3 Leistung (W)",
           "pv_string_4_name": "String 4 Name",
-          "pv_string_4_entity": "String 4 Sensor (kWh)"
+          "pv_string_4_entity": "String 4 Sensor (kWh)",
+          "pv_string_4_power": "String 4 Leistung (W)"
         },
         "data_description": {
           "pv_string_1_name": "z.B. Sued-Dach",
           "pv_string_1_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_1_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
           "pv_string_2_name": "z.B. Ost-Dach",
           "pv_string_2_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_2_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
           "pv_string_3_name": "z.B. West-Dach",
           "pv_string_3_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_3_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
           "pv_string_4_name": "z.B. Garage",
-          "pv_string_4_entity": "kWh-Zaehler fuer diesen String"
+          "pv_string_4_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_4_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)"
         }
       }
     }

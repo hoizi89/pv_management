@@ -47,6 +47,8 @@ from .const import (
     CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY,
     CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY,
     CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY,
+    CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
+    CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER,
 )
 
 
@@ -475,11 +477,11 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             return await self._save_and_return_to_menu(user_input)
 
         schema = {}
-        for i, (name_key, entity_key) in enumerate([
-            (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY),
-            (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY),
-            (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY),
-            (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY),
+        for i, (name_key, entity_key, power_key) in enumerate([
+            (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_1_POWER),
+            (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY, CONF_PV_STRING_2_POWER),
+            (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_3_POWER),
+            (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY, CONF_PV_STRING_4_POWER),
         ], 1):
             schema[vol.Optional(name_key, default=self._get_val(name_key, ""))] = selector.TextSelector()
             entity_val = self._get_val(entity_key)
@@ -488,6 +490,13 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     selector.EntitySelectorConfig(domain="sensor"))
             else:
                 schema[vol.Optional(entity_key)] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor"))
+            power_val = self._get_val(power_key)
+            if power_val:
+                schema[vol.Optional(power_key, default=power_val)] = selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor"))
+            else:
+                schema[vol.Optional(power_key)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor"))
 
         return self.async_show_form(
