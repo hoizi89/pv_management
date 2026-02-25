@@ -236,24 +236,28 @@ class PVStringSensor(BaseEntity):
         self._power_entity_id = power_entity_id
         self._sensor_type = sensor_type
 
-        suffix_map = {
+        # unique_id key (stabil, nie ändern!) und kurzer Anzeigename
+        uid_suffix_map = {
+            "production": ("Produktion", "Prod."),
+            "daily": ("Tagesproduktion", "Tag"),
+            "peak": ("Peak", "Peak"),
+            "efficiency": ("Effizienz", "Eff."),
+            "percentage": ("Anteil", "Anteil"),
+        }
+        props_map = {
             "production": ("kWh", "mdi:solar-panel", SensorStateClass.TOTAL_INCREASING),
             "daily": ("kWh/Tag", "mdi:weather-sunny", SensorStateClass.MEASUREMENT),
             "peak": ("kW", "mdi:solar-power-variant", SensorStateClass.MEASUREMENT),
             "efficiency": ("kWh/kWp", "mdi:speedometer", SensorStateClass.MEASUREMENT),
             "percentage": ("%", "mdi:chart-pie", SensorStateClass.MEASUREMENT),
         }
-        label_map = {
-            "production": "Prod.",
-            "daily": "Tag",
-            "peak": "Peak",
-            "efficiency": "Eff.",
-            "percentage": "Anteil",
-        }
-        unit, icon, state_class = suffix_map[sensor_type]
-        key = f"{string_name} {label_map[sensor_type]}"
+        uid_suffix, short_label = uid_suffix_map[sensor_type]
+        unit, icon, state_class = props_map[sensor_type]
+        key = f"{string_name} {uid_suffix}"  # für unique_id
 
         super().__init__(ctrl, name, key, unit=unit, icon=icon, state_class=state_class, device_type=DEVICE_PV_STRINGS)
+        # Anzeigename kürzen (unique_id bleibt stabil)
+        self._attr_name = f"{name} {string_name} {short_label}"
 
     @property
     def native_value(self):
