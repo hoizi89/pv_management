@@ -147,9 +147,10 @@ class PVManagementController:
         self._milestones_fired: set[int] = set()
         self._monthly_summary_month: int | None = None
 
-        # Wärmepumpe Delta-Tracking (seit erstem Sehen)
+        # Wärmepumpe Delta-Tracking (persistent über Neustarts)
         self._last_wp_kwh: float | None = None
         self._tracked_wp_kwh = 0.0
+        self._wp_first_seen_date: date | None = None
 
         # Listener
         self._remove_listeners = []
@@ -1264,7 +1265,11 @@ class PVManagementController:
 
     @property
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
-        """Own household consumption extrapolated to 1 year."""
+        """Own household consumption extrapolated to 1 year.
+
+        If WP entity configured: total annual minus WP annual.
+        Both extrapolated independently (tracking periods may differ).
+        """
         days = self.days_since_installation
         if days < 7:
             return None
@@ -1276,23 +1281,21 @@ class PVManagementController:
         if total <= 0:
             return None
 
-        # Subtract heat pump consumption if entity configured (delta tracking)
-        if self.benchmark_heatpump and self.benchmark_heatpump_entity:
-            total = max(0, total - self._tracked_wp_kwh)
-
-        return (total / days) * 365
+        total_annual = (total / days) * 365
+        wp_annual = self.benchmark_own_heatpump_kwh or 0.0
+        return max(0.0, total_annual - wp_annual)
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
         """Own heat pump consumption (delta since first seen, extrapolated to 1 year)."""
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
             return None
-        days = self.days_since_installation
-        if days < 7:
+        if self._tracked_wp_kwh <= 0 or self._wp_first_seen_date is None:
             return None
-        if self._tracked_wp_kwh <= 0:
+        wp_days = (date.today() - self._wp_first_seen_date).days
+        if wp_days < 1:
             return None
-        return (self._tracked_wp_kwh / days) * 365
+        return (self._tracked_wp_kwh / wp_days) * 365
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
@@ -1997,6 +2000,15 @@ class PVManagementController:
         self._auto_charge_total_kwh = safe_float(data.get("auto_charge_total_kwh"))
         self._auto_charge_estimated_savings = safe_float(data.get("auto_charge_estimated_savings"))
 
+        # WP Delta-Tracking wiederherstellen
+        self._tracked_wp_kwh = safe_float(data.get("tracked_wp_kwh"))
+        wp_first_seen = data.get("wp_first_seen_date")
+        if wp_first_seen:
+            try:
+                self._wp_first_seen_date = date.fromisoformat(wp_first_seen) if isinstance(wp_first_seen, str) else wp_first_seen
+            except (ValueError, TypeError):
+                pass
+
         first_seen = data.get("first_seen_date")
         if first_seen:
             try:
@@ -2143,6 +2155,8 @@ class PVManagementController:
             "auto_charge_total_hours": self._auto_charge_total_hours,
             "auto_charge_total_kwh": self._auto_charge_total_kwh,
             "auto_charge_estimated_savings": self._auto_charge_estimated_savings,
+            "tracked_wp_kwh": self._tracked_wp_kwh,
+            "wp_first_seen_date": self._wp_first_seen_date.isoformat() if self._wp_first_seen_date else None,
         }
 
     def _load_epex_forecast(self, state) -> None:
@@ -2364,6 +2378,8 @@ class PVManagementController:
 
         # Wärmepumpe (Delta-Tracking)
         elif entity_id == self.benchmark_heatpump_entity:
+            if self._wp_first_seen_date is None:
+                self._wp_first_seen_date = date.today()
             if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
                 self._tracked_wp_kwh += value - self._last_wp_kwh
             self._last_wp_kwh = value
