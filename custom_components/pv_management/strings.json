@@ -68,7 +68,7 @@
           "battery": "Batterie-Steuerung",
           "advanced": "Erweiterte Einstellungen",
           "benchmark": "Energie-Benchmark",
-          "save": "Speichern & Schliessen"
+          "pv_strings": "PV-Strings"
         }
       },
       "sensors": {
@@ -212,9 +212,29 @@
           "benchmark_heatpump_entity": "Gesamt-kWh Zaehler der Waermepumpe (optional, fuer fairen Vergleich)"
         }
       },
-      "save": {
-        "title": "Speichern",
-        "description": "Alle Aenderungen werden gespeichert."
+      "pv_strings": {
+        "title": "PV-Strings",
+        "description": "Konfiguriere bis zu 4 PV-Strings zum Vergleich. Nur Strings mit Name UND Sensor werden angezeigt.",
+        "data": {
+          "pv_string_1_name": "String 1 Name",
+          "pv_string_1_entity": "String 1 Sensor (kWh)",
+          "pv_string_2_name": "String 2 Name",
+          "pv_string_2_entity": "String 2 Sensor (kWh)",
+          "pv_string_3_name": "String 3 Name",
+          "pv_string_3_entity": "String 3 Sensor (kWh)",
+          "pv_string_4_name": "String 4 Name",
+          "pv_string_4_entity": "String 4 Sensor (kWh)"
+        },
+        "data_description": {
+          "pv_string_1_name": "z.B. Sued-Dach",
+          "pv_string_1_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_2_name": "z.B. Ost-Dach",
+          "pv_string_2_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_3_name": "z.B. West-Dach",
+          "pv_string_3_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_4_name": "z.B. Garage",
+          "pv_string_4_entity": "kWh-Zaehler fuer diesen String"
+        }
       }
     }
   },

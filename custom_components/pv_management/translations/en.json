@@ -68,7 +68,7 @@
           "battery": "Battery Control",
           "advanced": "Advanced Settings",
           "benchmark": "Energy Benchmark",
-          "save": "Save & Close"
+          "pv_strings": "PV Strings"
         }
       },
       "sensors": {
@@ -175,6 +175,30 @@
           "discharge_summer_soc": "Normal discharge in summer (April-September)"
         }
       },
+      "pv_strings": {
+        "title": "PV Strings",
+        "description": "Configure up to 4 PV strings for comparison. Only strings with name AND sensor will be shown.",
+        "data": {
+          "pv_string_1_name": "String 1 Name",
+          "pv_string_1_entity": "String 1 Sensor (kWh)",
+          "pv_string_2_name": "String 2 Name",
+          "pv_string_2_entity": "String 2 Sensor (kWh)",
+          "pv_string_3_name": "String 3 Name",
+          "pv_string_3_entity": "String 3 Sensor (kWh)",
+          "pv_string_4_name": "String 4 Name",
+          "pv_string_4_entity": "String 4 Sensor (kWh)"
+        },
+        "data_description": {
+          "pv_string_1_name": "e.g. South Roof",
+          "pv_string_1_entity": "kWh counter for this string",
+          "pv_string_2_name": "e.g. East Roof",
+          "pv_string_2_entity": "kWh counter for this string",
+          "pv_string_3_name": "e.g. West Roof",
+          "pv_string_3_entity": "kWh counter for this string",
+          "pv_string_4_name": "e.g. Garage",
+          "pv_string_4_entity": "kWh counter for this string"
+        }
+      },
       "advanced": {
         "title": "Advanced Settings",
         "description": "Thresholds for the recommendation traffic light and PV system configuration.",
@@ -211,10 +235,6 @@
           "benchmark_heatpump": "When active, heat pump consumption is benchmarked separately",
           "benchmark_heatpump_entity": "Total kWh counter of heat pump (optional, for fair comparison)"
         }
-      },
-      "save": {
-        "title": "Save",
-        "description": "All changes will be saved."
       }
     }
   },

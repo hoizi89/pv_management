@@ -184,3 +184,20 @@ BENCHMARK_CO2_FACTORS: Final[dict[str, float]] = {
 }
 
 RANGE_HOUSEHOLD_SIZE: Final[dict] = {"min": 1, "max": 6, "step": 1}
+
+# --- PV-Strings (Vergleich mehrerer Strings) --------------------------------
+CONF_PV_STRING_1_NAME: Final[str] = "pv_string_1_name"
+CONF_PV_STRING_1_ENTITY: Final[str] = "pv_string_1_entity"
+CONF_PV_STRING_2_NAME: Final[str] = "pv_string_2_name"
+CONF_PV_STRING_2_ENTITY: Final[str] = "pv_string_2_entity"
+CONF_PV_STRING_3_NAME: Final[str] = "pv_string_3_name"
+CONF_PV_STRING_3_ENTITY: Final[str] = "pv_string_3_entity"
+CONF_PV_STRING_4_NAME: Final[str] = "pv_string_4_name"
+CONF_PV_STRING_4_ENTITY: Final[str] = "pv_string_4_entity"
+
+PV_STRING_CONFIGS = [
+    (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY),
+    (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY),
+    (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY),
+    (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY),
+]
