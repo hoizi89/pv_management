@@ -1,6 +1,6 @@
 {
   "domain": "pv_management",
-  "name": "PV Management",
+  "name": "PV Energy Management Spot",
   "codeowners": ["@hoizi89"],
   "config_flow": true,
   "documentation": "https://github.com/hoizi89/pv_management",

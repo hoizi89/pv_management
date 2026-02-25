@@ -1,5 +1,5 @@
 {
-  "name": "PV Management",
+  "name": "PV Energy Management Spot",
   "homeassistant": "2023.1.0",
   "render_readme": true,
   "content_in_root": false,
