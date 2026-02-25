@@ -172,6 +172,8 @@ async def async_setup_entry(
                     PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "peak"),
                     PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "efficiency"),
                 ])
+        if any(p for _, _, p in ctrl.pv_strings):
+            entities.append(TotalPeakSensor(ctrl, name))
 
     async_add_entities(entities)
 
@@ -234,31 +236,22 @@ class PVStringSensor(BaseEntity):
         self._power_entity_id = power_entity_id
         self._sensor_type = sensor_type
 
-        if sensor_type == "production":
-            key = f"{string_name} Produktion"
-            unit = "kWh"
-            icon = "mdi:solar-panel"
-            state_class = SensorStateClass.TOTAL_INCREASING
-        elif sensor_type == "daily":
-            key = f"{string_name} Tagesproduktion"
-            unit = "kWh/Tag"
-            icon = "mdi:weather-sunny"
-            state_class = SensorStateClass.MEASUREMENT
-        elif sensor_type == "peak":
-            key = f"{string_name} Peak"
-            unit = "kW"
-            icon = "mdi:solar-power-variant"
-            state_class = SensorStateClass.MEASUREMENT
-        elif sensor_type == "efficiency":
-            key = f"{string_name} Effizienz"
-            unit = "kWh/kWp"
-            icon = "mdi:speedometer"
-            state_class = SensorStateClass.MEASUREMENT
-        else:  # percentage
-            key = f"{string_name} Anteil"
-            unit = "%"
-            icon = "mdi:chart-pie"
-            state_class = SensorStateClass.MEASUREMENT
+        suffix_map = {
+            "production": ("kWh", "mdi:solar-panel", SensorStateClass.TOTAL_INCREASING),
+            "daily": ("kWh/Tag", "mdi:weather-sunny", SensorStateClass.MEASUREMENT),
+            "peak": ("kW", "mdi:solar-power-variant", SensorStateClass.MEASUREMENT),
+            "efficiency": ("kWh/kWp", "mdi:speedometer", SensorStateClass.MEASUREMENT),
+            "percentage": ("%", "mdi:chart-pie", SensorStateClass.MEASUREMENT),
+        }
+        label_map = {
+            "production": "Prod.",
+            "daily": "Tag",
+            "peak": "Peak",
+            "efficiency": "Eff.",
+            "percentage": "Anteil",
+        }
+        unit, icon, state_class = suffix_map[sensor_type]
+        key = f"{string_name} {label_map[sensor_type]}"
 
         super().__init__(ctrl, name, key, unit=unit, icon=icon, state_class=state_class, device_type=DEVICE_PV_STRINGS)
 
@@ -279,6 +272,18 @@ class PVStringSensor(BaseEntity):
         else:  # percentage
             val = self.ctrl.get_string_percentage(self._string_entity_id)
             return round(val, 1) if val is not None else None
+
+
+class TotalPeakSensor(BaseEntity):
+    """Gesamt-Peak aller PV-Strings."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Gesamt Peak", unit="kW", icon="mdi:solar-power-variant",
+                         state_class=SensorStateClass.MEASUREMENT, device_type=DEVICE_PV_STRINGS)
+
+    @property
+    def native_value(self):
+        return self.ctrl.get_total_peak_kw()
 
 
 # =============================================================================
