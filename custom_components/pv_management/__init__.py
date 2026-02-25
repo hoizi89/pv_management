@@ -147,6 +147,10 @@ class PVManagementController:
         self._milestones_fired: set[int] = set()
         self._monthly_summary_month: int | None = None
 
+        # Wärmepumpe Delta-Tracking (seit erstem Sehen)
+        self._last_wp_kwh: float | None = None
+        self._tracked_wp_kwh = 0.0
+
         # Listener
         self._remove_listeners = []
         self._entity_listeners = []
@@ -1272,26 +1276,23 @@ class PVManagementController:
         if total <= 0:
             return None
 
-        # Subtract heat pump consumption if entity configured
+        # Subtract heat pump consumption if entity configured (delta tracking)
         if self.benchmark_heatpump and self.benchmark_heatpump_entity:
-            hp_val, available = self._get_entity_value(self.benchmark_heatpump_entity, 0.0)
-            if available and hp_val > 0:
-                total = max(0, total - hp_val)
+            total = max(0, total - self._tracked_wp_kwh)
 
         return (total / days) * 365
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
-        """Own heat pump consumption extrapolated to 1 year."""
+        """Own heat pump consumption (delta since first seen, extrapolated to 1 year)."""
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
             return None
         days = self.days_since_installation
         if days < 7:
             return None
-        hp_val, available = self._get_entity_value(self.benchmark_heatpump_entity, 0.0)
-        if not available or hp_val <= 0:
+        if self._tracked_wp_kwh <= 0:
             return None
-        return (hp_val / days) * 365
+        return (self._tracked_wp_kwh / days) * 365
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
@@ -2361,6 +2362,13 @@ class PVManagementController:
             self._load_solcast_forecast(new_state)
             recommendation_changed = True
 
+        # Wärmepumpe (Delta-Tracking)
+        elif entity_id == self.benchmark_heatpump_entity:
+            if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
+                self._tracked_wp_kwh += value - self._last_wp_kwh
+            self._last_wp_kwh = value
+            self._notify_entities()
+
         if changed:
             self._process_energy_update()
         elif recommendation_changed:
@@ -2432,6 +2440,15 @@ class PVManagementController:
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
         self._last_consumption_kwh = self._consumption_kwh
+
+        # WP-Sensor initialisieren (nur last-Wert, tracked bleibt 0)
+        if self.benchmark_heatpump_entity:
+            state = self.hass.states.get(self.benchmark_heatpump_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    self._last_wp_kwh = float(state.state)
+                except (ValueError, TypeError):
+                    pass
 
         _LOGGER.debug(
             "async_start: Sensor-Werte geladen - PV=%.2f, Export=%.2f, _restored=%s, _total_self=%.2f",
