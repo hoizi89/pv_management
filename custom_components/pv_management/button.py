@@ -132,6 +132,8 @@ class ConfirmResetButton(ButtonEntity):
 class ResetButton(BaseButton):
     """Button zum Neu-Initialisieren aus Sensor-Daten."""
 
+    _attr_entity_category = EntityCategory.CONFIG
+
     def __init__(self, ctrl, name: str):
         super().__init__(ctrl, name, "Neu initialisieren", icon="mdi:restart")
         self._first_press_time: float = 0.0
