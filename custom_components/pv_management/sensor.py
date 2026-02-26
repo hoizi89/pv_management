@@ -964,11 +964,12 @@ class CurrentFeedInTariffSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Einspeisevergütung",
+            "Preis Einspeisung",
             unit="€/kWh",
             icon="mdi:currency-eur",
             state_class=SensorStateClass.MEASUREMENT,
             entity_category=EntityCategory.DIAGNOSTIC,
+            device_type=DEVICE_PRICES,
         )
 
     @property
@@ -995,7 +996,7 @@ class InstallationCostSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Anschaffungskosten",
+            "Amort Kosten",
             unit="€",
             icon="mdi:cash",
             device_class=SensorDeviceClass.MONETARY,
