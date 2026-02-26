@@ -231,18 +231,20 @@ class BaseEntity(SensorEntity):
 class PVStringSensor(BaseEntity):
     """Generischer Sensor für PV-String Vergleich."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, power_entity_id: str | None, sensor_type: str):
         self._string_entity_id = entity_id
         self._power_entity_id = power_entity_id
         self._sensor_type = sensor_type
 
-        # unique_id key (stabil, nie ändern!) und kurzer Anzeigename
+        # unique_id key (stabil, nie ändern!)
         uid_suffix_map = {
-            "production": ("Produktion", "Prod."),
-            "daily": ("Tagesproduktion", "Tag"),
-            "peak": ("Peak", "Peak"),
-            "efficiency": ("Effizienz", "Eff."),
-            "percentage": ("Anteil", "Anteil"),
+            "production": "Produktion",
+            "daily": "Tagesproduktion",
+            "peak": "Peak",
+            "efficiency": "Effizienz",
+            "percentage": "Anteil",
         }
         props_map = {
             "production": ("kWh", "mdi:solar-panel", SensorStateClass.TOTAL_INCREASING),
@@ -251,13 +253,13 @@ class PVStringSensor(BaseEntity):
             "efficiency": ("kWh/kWp", "mdi:speedometer", SensorStateClass.MEASUREMENT),
             "percentage": ("%", "mdi:chart-pie", SensorStateClass.MEASUREMENT),
         }
-        uid_suffix, short_label = uid_suffix_map[sensor_type]
+        uid_suffix = uid_suffix_map[sensor_type]
         unit, icon, state_class = props_map[sensor_type]
         key = f"{string_name} {uid_suffix}"  # für unique_id
 
         super().__init__(ctrl, name, key, unit=unit, icon=icon, state_class=state_class, device_type=DEVICE_PV_STRINGS)
-        # Anzeigename kürzen (unique_id bleibt stabil)
-        self._attr_name = f"{name} {string_name} {short_label}"
+        # Anzeigename OHNE Device-Prefix (has_entity_name=True)
+        self._attr_name = f"{string_name} {uid_suffix}"
 
     @property
     def native_value(self):
@@ -281,9 +283,12 @@ class PVStringSensor(BaseEntity):
 class TotalPeakSensor(BaseEntity):
     """Gesamt-Peak aller PV-Strings."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, ctrl, name: str):
         super().__init__(ctrl, name, "Gesamt Peak", unit="kW", icon="mdi:solar-power-variant",
                          state_class=SensorStateClass.MEASUREMENT, device_type=DEVICE_PV_STRINGS)
+        self._attr_name = "Gesamt Peak"
 
     @property
     def native_value(self):
