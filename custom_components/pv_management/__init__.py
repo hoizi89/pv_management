@@ -1294,10 +1294,9 @@ class PVManagementController:
 
     @property
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
-        """Own household consumption extrapolated to 1 year (snapshot-based).
+        """Total consumption extrapolated to 1 year (incl. heat pump).
 
         Uses difference since benchmark start for independent lifecycle.
-        If WP entity configured: total annual minus WP annual.
         """
         if self._benchmark_start_date is None:
             return None
@@ -1311,8 +1310,7 @@ class PVManagementController:
         total_annual = consumption / days * 365
         if total_annual > 100_000:
             return None
-        wp_annual = self.benchmark_own_heatpump_kwh or 0.0
-        return max(0.0, total_annual - wp_annual)
+        return total_annual
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
@@ -1326,12 +1324,16 @@ class PVManagementController:
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
-        """Percentage difference: own vs average. Negative = better."""
+        """Percentage difference: own vs average. Negative = better.
+
+        If heat pump active: compares against household avg + heat pump avg.
+        """
         own = self.benchmark_own_annual_consumption_kwh
         avg = self.benchmark_avg_consumption_kwh
         if own is None or avg <= 0:
             return None
-        return ((own - avg) / avg) * 100
+        wp_avg = self.benchmark_avg_heatpump_kwh or 0
+        return ((own - (avg + wp_avg)) / (avg + wp_avg)) * 100
 
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:

@@ -2126,7 +2126,7 @@ class BenchmarkOwnSensor(BaseEntity):
     """Own household consumption extrapolated to 1 year."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Eigener Verbrauch",
+        super().__init__(ctrl, name, "Gesamtverbrauch",
                          unit="kWh/Jahr", icon="mdi:home-lightning-bolt",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
