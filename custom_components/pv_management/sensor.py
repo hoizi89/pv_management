@@ -405,6 +405,11 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "string_tracked_kwh": attrs.get("string_tracked_kwh", {}),
                 "string_first_seen_date": attrs.get("string_first_seen_date"),
                 "string_peak_w": attrs.get("string_peak_w", {}),
+                # Benchmark Snapshot
+                "benchmark_start_date": attrs.get("benchmark_start_date"),
+                "benchmark_start_self_consumption": safe_float(attrs.get("benchmark_start_self_consumption")),
+                "benchmark_start_grid_import": safe_float(attrs.get("benchmark_start_grid_import")),
+                "benchmark_start_feed_in": safe_float(attrs.get("benchmark_start_feed_in")),
             }
 
             _LOGGER.info(
@@ -455,6 +460,11 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "string_tracked_kwh": self.ctrl._string_tracked_kwh,
             "string_first_seen_date": self.ctrl._string_first_seen_date.isoformat() if self.ctrl._string_first_seen_date else None,
             "string_peak_w": self.ctrl._string_peak_w,
+            # Benchmark Snapshot
+            "benchmark_start_date": self.ctrl._benchmark_start_date.isoformat() if self.ctrl._benchmark_start_date else None,
+            "benchmark_start_self_consumption": round(self.ctrl._benchmark_start_self_consumption, 4),
+            "benchmark_start_grid_import": round(self.ctrl._benchmark_start_grid_import, 4),
+            "benchmark_start_feed_in": round(self.ctrl._benchmark_start_feed_in, 4),
             # Info
             "calculation_method": "incremental (dynamic prices supported)",
         }
