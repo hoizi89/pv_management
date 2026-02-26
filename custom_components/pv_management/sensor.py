@@ -2279,7 +2279,7 @@ class BenchmarkGridImportSensor(BaseEntity):
     """Annual grid import extrapolated from benchmark period."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Netzbezug Jahres",
+        super().__init__(ctrl, name, "Netz Bezug",
                          unit="kWh/Jahr", icon="mdi:transmission-tower-import",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
