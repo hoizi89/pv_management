@@ -143,10 +143,34 @@ Appears when enabled under Options > Energy Benchmark.
 | Benchmark Own Consumption | kWh/year | Your household consumption extrapolated |
 | Benchmark Comparison | % | Deviation (negative = better than average) |
 | Benchmark CO2 Avoided | kg/year | CO2 savings from PV |
-| Benchmark Efficiency Score | Points | 0-100 (consumption + autarky + self-consumption) |
+| Benchmark Efficiency Score | Points | 0-100 overall rating (see breakdown below) |
 | Benchmark Rating | — | Hervorragend / Sehr gut / Gut / Durchschnittlich |
 | Benchmark HP Average | kWh/year | Reference HP consumption (only with HP) |
 | Benchmark HP Consumption | kWh/year | Your HP consumption (only with HP) |
+
+#### Efficiency Score Breakdown
+
+The score (0-100 points) measures how well your PV system is performing. The sensor attributes show the detailed breakdown.
+
+| Component | Max Points | How it works |
+|-----------|-----------|--------------|
+| **Autarky Rate** | 35 | How independent you are from the grid. 100% autarky = 35 points |
+| **Specific Yield** | 25 | How well your system is utilized. 900 kWh/kWp (good for Central Europe) = 25 points |
+| **Self-Consumption Ratio** | 20 | How much PV production you use yourself. 100% = 20 points |
+| **Consumption vs Average** | 20 | Your consumption compared to country average. -50% below avg = 20 points |
+
+**Score interpretation:**
+- **80-100**: Excellent — highly optimized system with good autarky and utilization
+- **60-79**: Very good — solid performance, minor optimization potential
+- **40-59**: Good — typical residential PV system
+- **20-39**: Average — significant room for improvement
+- **0-19**: Needs improvement — consider battery storage or load shifting
+
+**Tips to improve your score:**
+- A battery improves both autarky and self-consumption
+- Shift heavy loads to daytime (dishwasher, washing machine, EV charging)
+- Smart heat pump control (heat during solar hours)
+- Check your string orientation — specific yield shows how well each string performs
 
 ### Device: PV-Strings (optional)
 
