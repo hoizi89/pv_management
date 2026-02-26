@@ -23,16 +23,43 @@ def get_prices_device_info(name: str) -> DeviceInfo:
     )
 
 
+def get_benchmark_device_info(name: str) -> DeviceInfo:
+    """DeviceInfo für das Benchmark-Gerät."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{name}_benchmark")},
+        name=f"{name} Benchmark",
+        manufacturer="Custom",
+        model="PV Management - Benchmark",
+        via_device=(DOMAIN, name),
+    )
+
+
+def get_pv_strings_device_info(name: str) -> DeviceInfo:
+    """DeviceInfo für das PV-Strings-Gerät."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{name}_pv_strings")},
+        name=f"{name} PV-Strings",
+        manufacturer="Custom",
+        model="PV Management - PV-Strings",
+        via_device=(DOMAIN, name),
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     """Setup der Buttons."""
     ctrl = hass.data[DOMAIN][entry.entry_id][DATA_CTRL]
     name = entry.data.get(CONF_NAME, "PV Management")
-    async_add_entities([
+    entities = [
         ResetButton(ctrl, name),
         ResetGridImportButton(ctrl, name),
-    ])
+    ]
+    if ctrl.benchmark_enabled:
+        entities.append(ResetBenchmarkButton(ctrl, name))
+    if ctrl.pv_strings:
+        entities.append(ResetPVStringsButton(ctrl, name))
+    async_add_entities(entities)
 
 
 class BaseButton(ButtonEntity):
@@ -106,3 +133,43 @@ class ResetGridImportButton(ButtonEntity):
             self.ctrl._total_grid_import_cost
         )
         self.ctrl.reset_grid_import_tracking()
+
+
+class ResetBenchmarkButton(ButtonEntity):
+    """Button zum Zurücksetzen der Benchmark/WP-Tracking-Daten."""
+
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, ctrl, name: str):
+        self.ctrl = ctrl
+        self._attr_name = f"{name} Benchmark zurücksetzen"
+        uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
+        self._attr_unique_id = f"{DOMAIN}_{uid_name}_reset_benchmark_button"
+        self._attr_icon = "mdi:chart-line-stacked"
+        self._attr_device_info = get_benchmark_device_info(name)
+
+    async def async_press(self) -> None:
+        """Setzt Benchmark- und WP-Tracking zurück."""
+        _LOGGER.info("Benchmark-Reset: WP-Tracking und Benchmark-Daten zurückgesetzt")
+        self.ctrl.reset_benchmark_tracking()
+
+
+class ResetPVStringsButton(ButtonEntity):
+    """Button zum Zurücksetzen der PV-String-Tracking-Daten und Peaks."""
+
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, ctrl, name: str):
+        self.ctrl = ctrl
+        self._attr_name = f"{name} PV-Strings zurücksetzen"
+        uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
+        self._attr_unique_id = f"{DOMAIN}_{uid_name}_reset_pv_strings_button"
+        self._attr_icon = "mdi:solar-panel"
+        self._attr_device_info = get_pv_strings_device_info(name)
+
+    async def async_press(self) -> None:
+        """Setzt PV-String-Tracking und Peaks zurück."""
+        _LOGGER.info("PV-Strings-Reset: Tracking und Peaks zurückgesetzt")
+        self.ctrl.reset_pv_strings_tracking()

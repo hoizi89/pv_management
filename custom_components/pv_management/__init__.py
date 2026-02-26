@@ -1288,8 +1288,8 @@ class PVManagementController:
         If WP entity configured: total annual minus WP annual.
         Both extrapolated independently (tracking periods may differ).
         """
-        days = self.days_since_installation
-        if days < 7:
+        days = self.days_tracking
+        if days < 1:
             return None
 
         # Total consumption from sensor totals
@@ -1325,8 +1325,8 @@ class PVManagementController:
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
         """CO2 avoided by PV per year in kg."""
-        days = self.days_since_installation
-        if days < 7 or self._pv_production_kwh <= 0:
+        days = self.days_tracking
+        if days < 1 or self._pv_production_kwh <= 0:
             return None
         daily_pv = self._pv_production_kwh / days
         co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, 0.3)
@@ -1372,6 +1372,13 @@ class PVManagementController:
         return "Verbesserungspotenzial"
 
     @property
+    def days_tracking(self) -> int:
+        """Tage seit erstem Tracking (unabhängig von Installationsdatum)."""
+        if self._first_seen_date:
+            return (date.today() - self._first_seen_date).days
+        return 0
+
+    @property
     def days_since_installation(self) -> int:
         """Tage seit Installation (oder erstem Tracking)."""
         # Priorität: Konfiguriertes Installationsdatum
@@ -1386,9 +1393,7 @@ class PVManagementController:
                 pass
 
         # Fallback: Erstes Tracking-Datum
-        if self._first_seen_date:
-            return (date.today() - self._first_seen_date).days
-        return 0
+        return self.days_tracking
 
     @property
     def average_daily_savings(self) -> float:
@@ -2017,7 +2022,8 @@ class PVManagementController:
         self._auto_charge_estimated_savings = safe_float(data.get("auto_charge_estimated_savings"))
 
         # WP Delta-Tracking wiederherstellen
-        self._tracked_wp_kwh = safe_float(data.get("tracked_wp_kwh"))
+        restored_wp = safe_float(data.get("tracked_wp_kwh"))
+        self._tracked_wp_kwh = restored_wp if restored_wp < 50000 else 0.0
         wp_first_seen = data.get("wp_first_seen_date")
         if wp_first_seen:
             try:
@@ -2216,15 +2222,13 @@ class PVManagementController:
         peak = self._string_peak_w.get(power_entity_id, 0.0)
         return round(peak / 1000, 1) if peak > 0 else None
 
-    def get_string_efficiency(self, energy_entity_id: str, power_entity_id: str) -> float | None:
-        """Effizienz in kWh/kWp (Produktion / Peak)."""
-        if not power_entity_id:
+    def get_total_daily_production_kwh(self) -> float | None:
+        """Durchschnittliche Tagesproduktion aller Strings zusammen."""
+        if not self._string_first_seen_date or not self._string_tracked_kwh:
             return None
-        peak_kw = self._string_peak_w.get(power_entity_id, 0.0) / 1000
-        if peak_kw <= 0:
-            return None
-        tracked = self._string_tracked_kwh.get(energy_entity_id, 0.0)
-        return round(tracked / peak_kw, 1) if tracked > 0 else None
+        days = max(1, (date.today() - self._string_first_seen_date).days)
+        total = sum(self._string_tracked_kwh.values())
+        return round(total / days, 2) if total > 0 else None
 
     def get_total_peak_kw(self) -> float | None:
         """Summe aller String-Peaks in kW."""
@@ -2455,7 +2459,10 @@ class PVManagementController:
             if self._wp_first_seen_date is None:
                 self._wp_first_seen_date = date.today()
             if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
-                self._tracked_wp_kwh += value - self._last_wp_kwh
+                delta = value - self._last_wp_kwh
+                # Sanity check: max 200 kWh pro Update (verhindert Absolutwert als Delta)
+                if delta < 200:
+                    self._tracked_wp_kwh += delta
             self._last_wp_kwh = value
             self._notify_entities()
 
@@ -2644,6 +2651,24 @@ class PVManagementController:
         for key, value in kwargs.items():
             if hasattr(self, key) and value is not None:
                 setattr(self, key, value)
+
+    def reset_benchmark_tracking(self) -> None:
+        """Setzt Benchmark/WP-Tracking zurück."""
+        _LOGGER.info("Benchmark-Tracking wird zurückgesetzt (WP war: %.2f kWh)", self._tracked_wp_kwh)
+        self._tracked_wp_kwh = 0.0
+        self._wp_first_seen_date = None
+        self._last_wp_kwh = None
+        self._first_seen_date = None
+        self._notify_entities()
+
+    def reset_pv_strings_tracking(self) -> None:
+        """Setzt PV-String-Tracking und Peaks zurück."""
+        _LOGGER.info("PV-Strings-Tracking wird zurückgesetzt")
+        self._string_tracked_kwh.clear()
+        self._string_last_kwh.clear()
+        self._string_first_seen_date = None
+        self._string_peak_w.clear()
+        self._notify_entities()
 
     def reset_grid_import_tracking(self) -> None:
         """Setzt das Strompreis-Tracking auf 0 zurück."""
