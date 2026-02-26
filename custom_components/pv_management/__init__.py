@@ -2705,19 +2705,31 @@ class PVManagementController:
             self._total_self_consumption_kwh,
         )
 
-        # Benchmark-Snapshot auto-initialisieren (erster Start oder nach Migration)
+        # Benchmark-Snapshot auto-initialisieren (erster Start oder Migration)
         if self.benchmark_enabled and self._benchmark_start_date is None:
-            self._benchmark_start_date = date.today()
-            self._benchmark_start_self_consumption = self._total_self_consumption_kwh
-            self._benchmark_start_grid_import = self._tracked_grid_import_kwh
-            self._benchmark_start_feed_in = self._total_feed_in_kwh
-            _LOGGER.info(
-                "Benchmark-Snapshot initialisiert: date=%s, self=%.2f, grid=%.2f, feed=%.2f",
-                self._benchmark_start_date,
-                self._benchmark_start_self_consumption,
-                self._benchmark_start_grid_import,
-                self._benchmark_start_feed_in,
-            )
+            if self._restored and self._first_seen_date:
+                # Migration: bestehende Daten beibehalten, Snapshot ab Tracking-Beginn
+                self._benchmark_start_date = self._first_seen_date
+                self._benchmark_start_self_consumption = 0.0
+                self._benchmark_start_grid_import = 0.0
+                self._benchmark_start_feed_in = 0.0
+                _LOGGER.info(
+                    "Benchmark-Snapshot (Migration): date=%s, start bei 0 (bestehende Daten werden verwendet)",
+                    self._benchmark_start_date,
+                )
+            else:
+                # Frischer Start: Snapshot ab jetzt
+                self._benchmark_start_date = date.today()
+                self._benchmark_start_self_consumption = self._total_self_consumption_kwh
+                self._benchmark_start_grid_import = self._tracked_grid_import_kwh
+                self._benchmark_start_feed_in = self._total_feed_in_kwh
+                _LOGGER.info(
+                    "Benchmark-Snapshot (neu): date=%s, self=%.2f, grid=%.2f, feed=%.2f",
+                    self._benchmark_start_date,
+                    self._benchmark_start_self_consumption,
+                    self._benchmark_start_grid_import,
+                    self._benchmark_start_feed_in,
+                )
 
         # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
         if self.restore_from_helper and self.amortisation_helper:
