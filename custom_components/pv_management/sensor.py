@@ -161,6 +161,7 @@ async def async_setup_entry(
             entities.extend([
                 BenchmarkHeatpumpAvgSensor(ctrl, name),
                 BenchmarkHeatpumpOwnSensor(ctrl, name),
+                BenchmarkHeatpumpComparisonSensor(ctrl, name),
                 BenchmarkHouseholdSensor(ctrl, name),
             ])
 
@@ -2114,7 +2115,7 @@ class BenchmarkAvgSensor(BaseEntity):
     """Reference average consumption for country/household size."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Durchschnitt",
+        super().__init__(ctrl, name, "Haus Durchschnitt",
                          unit="kWh/Jahr", icon="mdi:home-group",
                          device_type=DEVICE_BENCHMARK)
 
@@ -2142,7 +2143,7 @@ class BenchmarkHouseholdSensor(BaseEntity):
     """Household consumption without heat pump, extrapolated to 1 year."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Haushaltsverbrauch",
+        super().__init__(ctrl, name, "Haus Verbrauch",
                          unit="kWh/Jahr", icon="mdi:home-lightning-bolt-outline",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2157,7 +2158,7 @@ class BenchmarkComparisonSensor(BaseEntity):
     """Percentage difference vs. average."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Vergleich",
+        super().__init__(ctrl, name, "Haus Vergleich",
                          unit="%", icon="mdi:check-circle",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2325,3 +2326,18 @@ class BenchmarkHeatpumpOwnSensor(BaseEntity):
     def native_value(self):
         val = self.ctrl.benchmark_own_heatpump_kwh
         return round(val) if val is not None else None
+
+
+class BenchmarkHeatpumpComparisonSensor(BaseEntity):
+    """Heat pump consumption vs average comparison in %."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "WP Vergleich",
+                         unit="%", icon="mdi:heat-pump",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        val = self.ctrl.benchmark_heatpump_vs_avg
+        return round(val, 1) if val is not None else None

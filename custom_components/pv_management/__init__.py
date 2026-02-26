@@ -1343,6 +1343,17 @@ class PVManagementController:
         return ((household - avg) / avg) * 100
 
     @property
+    def benchmark_heatpump_vs_avg(self) -> float | None:
+        """Percentage difference: own WP vs average WP. Negative = better."""
+        own_wp = self.benchmark_own_heatpump_kwh
+        if own_wp is None:
+            return None
+        avg_wp = self.benchmark_avg_heatpump_kwh
+        if avg_wp is None or avg_wp <= 0:
+            return None
+        return (own_wp - avg_wp) / avg_wp * 100
+
+    @property
     def benchmark_co2_avoided_kg(self) -> float | None:
         """CO2 avoided by PV per year in kg (snapshot-based)."""
         if self._benchmark_start_date is None:
