@@ -1329,7 +1329,8 @@ class PVManagementController:
         if total is None:
             return None
         wp = self.benchmark_own_heatpump_kwh or 0.0
-        return max(0.0, total - wp)
+        wp = min(wp, total)  # WP kann nicht mehr als Gesamtverbrauch sein
+        return total - wp
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
