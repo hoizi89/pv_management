@@ -2188,6 +2188,19 @@ class BenchmarkScoreSensor(BaseEntity):
         return self.ctrl.benchmark_efficiency_score
 
     @property
+    def extra_state_attributes(self) -> dict:
+        autarky = self.ctrl.autarky_rate
+        specific = self.ctrl.benchmark_specific_yield
+        sc_ratio = self.ctrl.self_consumption_ratio
+        comparison = self.ctrl.benchmark_consumption_vs_avg
+        return {
+            "autarkie_punkte": f"{min(35, autarky * 0.35):.1f}/35" if autarky is not None else "n/a",
+            "spez_ertrag_punkte": f"{min(25, (specific / 900) * 25):.1f}/25" if specific and specific > 0 else "n/a",
+            "eigenverbrauch_punkte": f"{min(20, sc_ratio * 0.2):.1f}/20" if sc_ratio is not None else "n/a",
+            "verbrauch_punkte": f"{max(0, min(20, 10 - comparison * 0.2)):.1f}/20" if comparison is not None else "n/a",
+        }
+
+    @property
     def icon(self):
         score = self.ctrl.benchmark_efficiency_score
         if score is not None:
