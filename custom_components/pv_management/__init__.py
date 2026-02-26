@@ -1301,7 +1301,9 @@ class PVManagementController:
         """
         if self._benchmark_start_date is None:
             return None
-        days = max(1, (date.today() - self._benchmark_start_date).days)
+        days = (date.today() - self._benchmark_start_date).days
+        if days < 3:
+            return None
 
         consumption = (
             (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
@@ -1312,6 +1314,8 @@ class PVManagementController:
             return None
 
         total_annual = consumption / days * 365
+        if total_annual > 100_000:
+            return None
         wp_annual = self.benchmark_own_heatpump_kwh or 0.0
         return max(0.0, total_annual - wp_annual)
 
@@ -1339,7 +1343,9 @@ class PVManagementController:
         """CO2 avoided by PV per year in kg (snapshot-based)."""
         if self._benchmark_start_date is None:
             return None
-        days = max(1, (date.today() - self._benchmark_start_date).days)
+        days = (date.today() - self._benchmark_start_date).days
+        if days < 3:
+            return None
         pv_since_start = (
             (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
             + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
@@ -1347,33 +1353,46 @@ class PVManagementController:
         if pv_since_start <= 0:
             return None
         daily_pv = pv_since_start / days
+        annual_pv = daily_pv * 365
+        if annual_pv > 100_000:
+            return None
         co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, 0.3)
-        return daily_pv * 365 * co2_factor
+        return annual_pv * co2_factor
 
     @property
     def benchmark_annual_grid_import_kwh(self) -> float | None:
         """Annual grid import extrapolated from benchmark period."""
         if self._benchmark_start_date is None:
             return None
-        days = max(1, (date.today() - self._benchmark_start_date).days)
+        days = (date.today() - self._benchmark_start_date).days
+        if days < 3:
+            return None
         grid_since_start = self._tracked_grid_import_kwh - self._benchmark_start_grid_import
         if grid_since_start <= 0:
             return None
-        return grid_since_start / days * 365
+        annual = grid_since_start / days * 365
+        if annual > 100_000:
+            return None
+        return annual
 
     @property
     def benchmark_annual_pv_production_kwh(self) -> float | None:
         """Hochgerechnete PV-Jahresproduktion (snapshot-basiert)."""
         if self._benchmark_start_date is None:
             return None
-        days = max(1, (date.today() - self._benchmark_start_date).days)
+        days = (date.today() - self._benchmark_start_date).days
+        if days < 3:
+            return None
         pv_since_start = (
             (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
             + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
         )
         if pv_since_start <= 0:
             return None
-        return pv_since_start / days * 365
+        annual = pv_since_start / days * 365
+        if annual > 100_000:
+            return None
+        return annual
 
     @property
     def total_installed_kwp(self) -> float:
@@ -2705,31 +2724,19 @@ class PVManagementController:
             self._total_self_consumption_kwh,
         )
 
-        # Benchmark-Snapshot auto-initialisieren (erster Start oder Migration)
+        # Benchmark-Snapshot auto-initialisieren (frischer Start)
         if self.benchmark_enabled and self._benchmark_start_date is None:
-            if self._restored and self._first_seen_date:
-                # Migration: bestehende Daten beibehalten, Snapshot ab Tracking-Beginn
-                self._benchmark_start_date = self._first_seen_date
-                self._benchmark_start_self_consumption = 0.0
-                self._benchmark_start_grid_import = 0.0
-                self._benchmark_start_feed_in = 0.0
-                _LOGGER.info(
-                    "Benchmark-Snapshot (Migration): date=%s, start bei 0 (bestehende Daten werden verwendet)",
-                    self._benchmark_start_date,
-                )
-            else:
-                # Frischer Start: Snapshot ab jetzt
-                self._benchmark_start_date = date.today()
-                self._benchmark_start_self_consumption = self._total_self_consumption_kwh
-                self._benchmark_start_grid_import = self._tracked_grid_import_kwh
-                self._benchmark_start_feed_in = self._total_feed_in_kwh
-                _LOGGER.info(
-                    "Benchmark-Snapshot (neu): date=%s, self=%.2f, grid=%.2f, feed=%.2f",
-                    self._benchmark_start_date,
-                    self._benchmark_start_self_consumption,
-                    self._benchmark_start_grid_import,
-                    self._benchmark_start_feed_in,
-                )
+            self._benchmark_start_date = date.today()
+            self._benchmark_start_self_consumption = self._total_self_consumption_kwh
+            self._benchmark_start_grid_import = self._tracked_grid_import_kwh
+            self._benchmark_start_feed_in = self._total_feed_in_kwh
+            _LOGGER.info(
+                "Benchmark-Snapshot initialisiert: date=%s, self=%.2f, grid=%.2f, feed=%.2f",
+                self._benchmark_start_date,
+                self._benchmark_start_self_consumption,
+                self._benchmark_start_grid_import,
+                self._benchmark_start_feed_in,
+            )
 
         # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
         if self.restore_from_helper and self.amortisation_helper:
