@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
@@ -10,6 +11,8 @@ from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from .const import DOMAIN, DATA_CTRL, CONF_NAME
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIRM_WINDOW_SECONDS = 5
 
 
 def get_prices_device_info(name: str) -> DeviceInfo:
@@ -80,38 +83,11 @@ class BaseButton(ButtonEntity):
         )
 
 
-class ResetButton(BaseButton):
-    """Button zum Neu-Initialisieren aus Sensor-Daten."""
+class ConfirmResetButton(ButtonEntity):
+    """Button mit Doppelklick-Bestätigung für destruktive Aktionen.
 
-    def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Neu initialisieren", icon="mdi:restart")
-
-    async def async_press(self) -> None:
-        """Initialisiert die Werte neu aus den aktuellen Sensor-Totals."""
-        _LOGGER.info("Reset-Button gedrückt: Initialisiere neu aus Sensor-Daten")
-        # Erst zurücksetzen
-        self.ctrl._total_self_consumption_kwh = 0.0
-        self.ctrl._total_feed_in_kwh = 0.0
-        self.ctrl._accumulated_savings_self = 0.0
-        self.ctrl._accumulated_earnings_feed = 0.0
-        self.ctrl._first_seen_date = None
-        # Dann aus Sensoren initialisieren
-        self.ctrl._initialize_from_sensors()
-        # Last-Werte setzen für korrektes Delta-Tracking
-        self.ctrl._last_pv_production_kwh = self.ctrl._pv_production_kwh
-        self.ctrl._last_grid_export_kwh = self.ctrl._grid_export_kwh
-        self.ctrl._notify_entities()
-
-
-class ResetGridImportButton(ButtonEntity):
-    """
-    Button zum Zurücksetzen aller Strompreis-Tracking-Werte.
-
-    Setzt zurück:
-    - Gesamte Netzbezug-Kosten (€)
-    - Getrackte kWh für Durchschnittsberechnung
-    - Tägliche Werte
-    - Monatliche Werte
+    Erster Klick: Warnung als Persistent Notification (5s Fenster).
+    Zweiter Klick innerhalb 5s: Reset wird ausgeführt.
     """
 
     _attr_should_poll = False
@@ -119,57 +95,128 @@ class ResetGridImportButton(ButtonEntity):
 
     def __init__(self, ctrl, name: str):
         self.ctrl = ctrl
+        self._base_name = name
+        self._first_press_time: float = 0.0
+
+    async def async_press(self) -> None:
+        now = time.monotonic()
+        elapsed = now - self._first_press_time
+
+        if elapsed <= CONFIRM_WINDOW_SECONDS:
+            # Zweiter Klick — Reset ausführen
+            self._first_press_time = 0.0
+            self.hass.components.persistent_notification.async_dismiss(
+                notification_id=f"{self._attr_unique_id}_confirm"
+            )
+            _LOGGER.info("Reset bestätigt: %s", self._attr_name)
+            await self._execute_reset()
+            self.hass.components.persistent_notification.async_create(
+                message=f"**{self._attr_name}** wurde zurückgesetzt.",
+                title="Reset durchgeführt",
+                notification_id=f"{self._attr_unique_id}_done",
+            )
+        else:
+            # Erster Klick — Warnung anzeigen
+            self._first_press_time = now
+            self.hass.components.persistent_notification.async_create(
+                message=f"**{self._attr_name}**: Innerhalb von {CONFIRM_WINDOW_SECONDS} Sekunden erneut drücken um zurückzusetzen. Alle Daten gehen verloren!",
+                title="Zurücksetzen bestätigen",
+                notification_id=f"{self._attr_unique_id}_confirm",
+            )
+            _LOGGER.warning("Reset angefordert: %s — erneut drücken zum Bestätigen", self._attr_name)
+
+    async def _execute_reset(self) -> None:
+        raise NotImplementedError
+
+
+class ResetButton(BaseButton):
+    """Button zum Neu-Initialisieren aus Sensor-Daten."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Neu initialisieren", icon="mdi:restart")
+        self._first_press_time: float = 0.0
+
+    async def async_press(self) -> None:
+        now = time.monotonic()
+        elapsed = now - self._first_press_time
+
+        if elapsed <= CONFIRM_WINDOW_SECONDS:
+            self._first_press_time = 0.0
+            self.hass.components.persistent_notification.async_dismiss(
+                notification_id=f"{self._attr_unique_id}_confirm"
+            )
+            _LOGGER.info("Reset-Button bestätigt: Initialisiere neu aus Sensor-Daten")
+            self.ctrl._total_self_consumption_kwh = 0.0
+            self.ctrl._total_feed_in_kwh = 0.0
+            self.ctrl._accumulated_savings_self = 0.0
+            self.ctrl._accumulated_earnings_feed = 0.0
+            self.ctrl._first_seen_date = None
+            self.ctrl._initialize_from_sensors()
+            self.ctrl._last_pv_production_kwh = self.ctrl._pv_production_kwh
+            self.ctrl._last_grid_export_kwh = self.ctrl._grid_export_kwh
+            self.ctrl._notify_entities()
+            self.hass.components.persistent_notification.async_create(
+                message="Amortisation wurde neu initialisiert.",
+                title="Reset durchgeführt",
+                notification_id=f"{self._attr_unique_id}_done",
+            )
+        else:
+            self._first_press_time = now
+            self.hass.components.persistent_notification.async_create(
+                message=f"**Neu initialisieren**: Innerhalb von {CONFIRM_WINDOW_SECONDS} Sekunden erneut drücken. Alle Amortisationsdaten werden zurückgesetzt!",
+                title="Zurücksetzen bestätigen",
+                notification_id=f"{self._attr_unique_id}_confirm",
+            )
+            _LOGGER.warning("Neu-Initialisierung angefordert — erneut drücken zum Bestätigen")
+
+
+class ResetGridImportButton(ConfirmResetButton):
+    """Button zum Zurücksetzen aller Strompreis-Tracking-Werte."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name)
         self._attr_name = f"{name} Strompreis-Tracking zurücksetzen"
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_reset_grid_import_button"
         self._attr_icon = "mdi:cash-remove"
         self._attr_device_info = get_prices_device_info(name)
 
-    async def async_press(self) -> None:
-        """Handle button press - setzt alle Strompreis-Werte zurück."""
+    async def _execute_reset(self) -> None:
         _LOGGER.info(
-            "Strompreis-Reset-Button gedrückt: Setze alle Werte zurück (war: %.2f kWh, %.2f €)",
+            "Strompreis-Reset bestätigt: Setze alle Werte zurück (war: %.2f kWh, %.2f €)",
             self.ctrl._tracked_grid_import_kwh,
-            self.ctrl._total_grid_import_cost
+            self.ctrl._total_grid_import_cost,
         )
         self.ctrl.reset_grid_import_tracking()
 
 
-class ResetBenchmarkButton(ButtonEntity):
+class ResetBenchmarkButton(ConfirmResetButton):
     """Button zum Zurücksetzen der Benchmark/WP-Tracking-Daten."""
 
-    _attr_should_poll = False
-    _attr_entity_category = EntityCategory.CONFIG
-
     def __init__(self, ctrl, name: str):
-        self.ctrl = ctrl
+        super().__init__(ctrl, name)
         self._attr_name = f"{name} Benchmark zurücksetzen"
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_reset_benchmark_button"
         self._attr_icon = "mdi:chart-line-stacked"
         self._attr_device_info = get_benchmark_device_info(name)
 
-    async def async_press(self) -> None:
-        """Setzt Benchmark- und WP-Tracking zurück."""
-        _LOGGER.info("Benchmark-Reset: WP-Tracking und Benchmark-Daten zurückgesetzt")
+    async def _execute_reset(self) -> None:
+        _LOGGER.info("Benchmark-Reset bestätigt: WP-Tracking und Benchmark-Daten zurückgesetzt")
         self.ctrl.reset_benchmark_tracking()
 
 
-class ResetPVStringsButton(ButtonEntity):
+class ResetPVStringsButton(ConfirmResetButton):
     """Button zum Zurücksetzen der PV-String-Tracking-Daten und Peaks."""
 
-    _attr_should_poll = False
-    _attr_entity_category = EntityCategory.CONFIG
-
     def __init__(self, ctrl, name: str):
-        self.ctrl = ctrl
+        super().__init__(ctrl, name)
         self._attr_name = f"{name} PV-Strings zurücksetzen"
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_reset_pv_strings_button"
         self._attr_icon = "mdi:solar-panel"
         self._attr_device_info = get_pv_strings_device_info(name)
 
-    async def async_press(self) -> None:
-        """Setzt PV-String-Tracking und Peaks zurück."""
-        _LOGGER.info("PV-Strings-Reset: Tracking und Peaks zurückgesetzt")
+    async def _execute_reset(self) -> None:
+        _LOGGER.info("PV-Strings-Reset bestätigt: Tracking und Peaks zurückgesetzt")
         self.ctrl.reset_pv_strings_tracking()
