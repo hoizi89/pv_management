@@ -370,6 +370,13 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "auto_charge_total_hours": safe_float(attrs.get("auto_charge_total_hours")),
                 "auto_charge_total_kwh": safe_float(attrs.get("auto_charge_total_kwh")),
                 "auto_charge_estimated_savings": safe_float(attrs.get("auto_charge_estimated_savings")),
+                # WP Delta-Tracking
+                "tracked_wp_kwh": safe_float(attrs.get("tracked_wp_kwh")),
+                "wp_first_seen_date": attrs.get("wp_first_seen_date"),
+                # PV-String Delta-Tracking
+                "string_tracked_kwh": attrs.get("string_tracked_kwh", {}),
+                "string_first_seen_date": attrs.get("string_first_seen_date"),
+                "string_peak_w": attrs.get("string_peak_w", {}),
             }
 
             _LOGGER.info(
@@ -413,6 +420,13 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "auto_charge_total_hours": round(self.ctrl._auto_charge_total_hours, 2),
             "auto_charge_total_kwh": round(self.ctrl._auto_charge_total_kwh, 2),
             "auto_charge_estimated_savings": round(self.ctrl._auto_charge_estimated_savings, 2),
+            # WP Delta-Tracking (persistent)
+            "tracked_wp_kwh": round(self.ctrl._tracked_wp_kwh, 4),
+            "wp_first_seen_date": self.ctrl._wp_first_seen_date.isoformat() if self.ctrl._wp_first_seen_date else None,
+            # PV-String Delta-Tracking (persistent)
+            "string_tracked_kwh": self.ctrl._string_tracked_kwh,
+            "string_first_seen_date": self.ctrl._string_first_seen_date.isoformat() if self.ctrl._string_first_seen_date else None,
+            "string_peak_w": self.ctrl._string_peak_w,
             # Info
             "calculation_method": "incremental (dynamic prices supported)",
         }
