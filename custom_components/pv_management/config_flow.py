@@ -4,8 +4,10 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 
+import logging
+
 from .const import (
-    DOMAIN,
+    DOMAIN, DATA_CTRL,
     CONF_NAME, CONF_PV_PRODUCTION_ENTITY, CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
@@ -176,6 +178,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 "advanced": "Erweiterte Einstellungen",
                 "benchmark": "Energie-Benchmark",
                 "pv_strings": "PV-Strings",
+                "reset": "Zurücksetzen",
             },
         )
 
@@ -521,4 +524,49 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             step_id="pv_strings",
             data_schema=vol.Schema(schema)
         )
+
+    async def async_step_reset(self, user_input=None):
+        """Reset-Optionen."""
+        _LOGGER = logging.getLogger(__name__)
+
+        if user_input is not None:
+            target = user_input.get("reset_target")
+            ctrl = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id, {}).get(DATA_CTRL)
+            if ctrl and target:
+                if target == "amortisation":
+                    ctrl._total_self_consumption_kwh = 0.0
+                    ctrl._total_feed_in_kwh = 0.0
+                    ctrl._accumulated_savings_self = 0.0
+                    ctrl._accumulated_earnings_feed = 0.0
+                    ctrl._first_seen_date = None
+                    ctrl._initialize_from_sensors()
+                    ctrl._last_pv_production_kwh = ctrl._pv_production_kwh
+                    ctrl._last_grid_export_kwh = ctrl._grid_export_kwh
+                    ctrl._notify_entities()
+                    _LOGGER.info("Reset via Settings: Amortisation re-initialized")
+                elif target == "grid_import":
+                    ctrl.reset_grid_import_tracking()
+                    _LOGGER.info("Reset via Settings: Grid import tracking reset")
+                elif target == "benchmark":
+                    ctrl.reset_benchmark_tracking()
+                    _LOGGER.info("Reset via Settings: Benchmark reset")
+                elif target == "pv_strings":
+                    ctrl.reset_pv_strings_tracking()
+                    _LOGGER.info("Reset via Settings: PV strings reset")
+            return await self.async_step_init()
+
+        schema = vol.Schema({
+            vol.Required("reset_target"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value="amortisation", label="Amortisation (re-init from sensors)"),
+                        selector.SelectOptionDict(value="grid_import", label="Electricity Price Tracking"),
+                        selector.SelectOptionDict(value="benchmark", label="Energy Benchmark"),
+                        selector.SelectOptionDict(value="pv_strings", label="PV Strings (tracking & peaks)"),
+                    ],
+                    mode="dropdown",
+                )
+            ),
+        })
+        return self.async_show_form(step_id="reset", data_schema=schema)
 

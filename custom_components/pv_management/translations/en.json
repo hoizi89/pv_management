@@ -68,7 +68,8 @@
           "battery": "Battery Control",
           "advanced": "Advanced Settings",
           "benchmark": "Energy Benchmark",
-          "pv_strings": "PV Strings"
+          "pv_strings": "PV Strings",
+          "reset": "Reset Data"
         }
       },
       "sensors": {
@@ -250,6 +251,13 @@
           "benchmark_household_size": "Number of persons in household",
           "benchmark_heatpump": "When active, heat pump consumption is benchmarked separately",
           "benchmark_heatpump_entity": "Total kWh counter of heat pump (optional, for fair comparison)"
+        }
+      },
+      "reset": {
+        "title": "Reset Data",
+        "description": "Select which tracking data to reset. This cannot be undone!",
+        "data": {
+          "reset_target": "Reset Target"
         }
       }
     }
