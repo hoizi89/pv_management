@@ -150,6 +150,7 @@ async def async_setup_entry(
             BenchmarkOwnSensor(ctrl, name),
             BenchmarkComparisonSensor(ctrl, name),
             BenchmarkCO2Sensor(ctrl, name),
+            BenchmarkGridImportSensor(ctrl, name),
             BenchmarkScoreSensor(ctrl, name),
             BenchmarkRatingSensor(ctrl, name),
         ])
@@ -2082,7 +2083,7 @@ class BenchmarkAvgSensor(BaseEntity):
     """Reference average consumption for country/household size."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark Durchschnitt",
+        super().__init__(ctrl, name, "Durchschnitt",
                          unit="kWh/Jahr", icon="mdi:home-group",
                          device_type=DEVICE_BENCHMARK)
 
@@ -2095,7 +2096,7 @@ class BenchmarkOwnSensor(BaseEntity):
     """Own household consumption extrapolated to 1 year."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark Eigener Verbrauch",
+        super().__init__(ctrl, name, "Eigener Verbrauch",
                          unit="kWh/Jahr", icon="mdi:home-lightning-bolt",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2110,7 +2111,7 @@ class BenchmarkComparisonSensor(BaseEntity):
     """Percentage difference vs. average."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark Vergleich",
+        super().__init__(ctrl, name, "Vergleich",
                          unit="%", icon="mdi:check-circle",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2142,7 +2143,7 @@ class BenchmarkCO2Sensor(BaseEntity):
     """CO2 avoided by PV per year."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark CO2 Vermieden",
+        super().__init__(ctrl, name, "CO2 Vermieden",
                          unit="kg/Jahr", icon="mdi:molecule-co2",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2157,7 +2158,7 @@ class BenchmarkScoreSensor(BaseEntity):
     """Efficiency score 0-100."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark Effizienz Score",
+        super().__init__(ctrl, name, "Effizienz Score",
                          unit="Punkte", icon="mdi:star-circle",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2181,7 +2182,7 @@ class BenchmarkRatingSensor(BaseEntity):
     """Text rating based on efficiency score."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark Bewertung",
+        super().__init__(ctrl, name, "Bewertung",
                          icon="mdi:trophy",
                          device_type=DEVICE_BENCHMARK)
 
@@ -2190,11 +2191,26 @@ class BenchmarkRatingSensor(BaseEntity):
         return self.ctrl.benchmark_rating
 
 
+class BenchmarkGridImportSensor(BaseEntity):
+    """Annual grid import extrapolated from benchmark period."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Netzbezug Jahres",
+                         unit="kWh/Jahr", icon="mdi:transmission-tower-import",
+                         state_class=SensorStateClass.MEASUREMENT,
+                         device_type=DEVICE_BENCHMARK)
+
+    @property
+    def native_value(self):
+        val = self.ctrl.benchmark_annual_grid_import_kwh
+        return round(val, 0) if val else None
+
+
 class BenchmarkHeatpumpAvgSensor(BaseEntity):
     """Reference heat pump consumption."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark WP Durchschnitt",
+        super().__init__(ctrl, name, "WP Durchschnitt",
                          unit="kWh/Jahr", icon="mdi:heat-pump",
                          device_type=DEVICE_BENCHMARK)
 
@@ -2207,7 +2223,7 @@ class BenchmarkHeatpumpOwnSensor(BaseEntity):
     """Own heat pump consumption extrapolated to 1 year."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Benchmark WP Verbrauch",
+        super().__init__(ctrl, name, "WP Verbrauch",
                          unit="kWh/Jahr", icon="mdi:heat-pump-outline",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)

@@ -153,6 +153,12 @@ class PVManagementController:
         self._tracked_wp_kwh = 0.0
         self._wp_first_seen_date: date | None = None
 
+        # Benchmark-Startpunkte (Snapshot bei Reset/Erststart)
+        self._benchmark_start_date: date | None = None
+        self._benchmark_start_self_consumption: float = 0.0
+        self._benchmark_start_grid_import: float = 0.0
+        self._benchmark_start_feed_in: float = 0.0
+
         # PV-String Delta-Tracking
         self._string_last_kwh: dict[str, float | None] = {}
         self._string_tracked_kwh: dict[str, float] = {}
@@ -1283,23 +1289,24 @@ class PVManagementController:
 
     @property
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
-        """Own household consumption extrapolated to 1 year.
+        """Own household consumption extrapolated to 1 year (snapshot-based).
 
+        Uses difference since benchmark start for independent lifecycle.
         If WP entity configured: total annual minus WP annual.
-        Both extrapolated independently (tracking periods may differ).
         """
-        days = self.days_tracking
-        if days < 1:
+        if self._benchmark_start_date is None:
+            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+
+        consumption = (
+            (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
+            + (self._tracked_grid_import_kwh - self._benchmark_start_grid_import)
+        )
+
+        if consumption <= 0:
             return None
 
-        # Total consumption from sensor totals
-        self_consumption = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
-        total = self_consumption + self._grid_import_kwh
-
-        if total <= 0:
-            return None
-
-        total_annual = (total / days) * 365
+        total_annual = consumption / days * 365
         wp_annual = self.benchmark_own_heatpump_kwh or 0.0
         return max(0.0, total_annual - wp_annual)
 
@@ -1324,13 +1331,30 @@ class PVManagementController:
 
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
-        """CO2 avoided by PV per year in kg."""
-        days = self.days_tracking
-        if days < 1 or self._pv_production_kwh <= 0:
+        """CO2 avoided by PV per year in kg (snapshot-based)."""
+        if self._benchmark_start_date is None:
             return None
-        daily_pv = self._pv_production_kwh / days
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+        pv_since_start = (
+            (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
+            + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
+        )
+        if pv_since_start <= 0:
+            return None
+        daily_pv = pv_since_start / days
         co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, 0.3)
         return daily_pv * 365 * co2_factor
+
+    @property
+    def benchmark_annual_grid_import_kwh(self) -> float | None:
+        """Annual grid import extrapolated from benchmark period."""
+        if self._benchmark_start_date is None:
+            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+        grid_since_start = self._tracked_grid_import_kwh - self._benchmark_start_grid_import
+        if grid_since_start <= 0:
+            return None
+        return grid_since_start / days * 365
 
     @property
     def benchmark_efficiency_score(self) -> int | None:
@@ -2075,6 +2099,17 @@ class PVManagementController:
                     pv_total,
                 )
 
+        # Benchmark-Snapshot wiederherstellen
+        bsd = data.get("benchmark_start_date")
+        if bsd:
+            try:
+                self._benchmark_start_date = date.fromisoformat(bsd) if isinstance(bsd, str) else bsd
+            except (ValueError, TypeError):
+                pass
+        self._benchmark_start_self_consumption = safe_float(data.get("benchmark_start_self_consumption"))
+        self._benchmark_start_grid_import = safe_float(data.get("benchmark_start_grid_import"))
+        self._benchmark_start_feed_in = safe_float(data.get("benchmark_start_feed_in"))
+
         self._restored = True
 
         # HINWEIS: _last_* Werte werden NICHT hier gesetzt!
@@ -2194,6 +2229,10 @@ class PVManagementController:
             "string_tracked_kwh": self._string_tracked_kwh,
             "string_first_seen_date": self._string_first_seen_date.isoformat() if self._string_first_seen_date else None,
             "string_peak_w": self._string_peak_w,
+            "benchmark_start_date": self._benchmark_start_date.isoformat() if self._benchmark_start_date else None,
+            "benchmark_start_self_consumption": self._benchmark_start_self_consumption,
+            "benchmark_start_grid_import": self._benchmark_start_grid_import,
+            "benchmark_start_feed_in": self._benchmark_start_feed_in,
         }
 
     def get_string_production_kwh(self, entity_id: str) -> float:
@@ -2456,6 +2495,10 @@ class PVManagementController:
 
         # Wärmepumpe (Delta-Tracking)
         elif entity_id == self.benchmark_heatpump_entity:
+            state_obj = self.hass.states.get(entity_id)
+            uom = state_obj.attributes.get("unit_of_measurement", "") if state_obj else ""
+            if uom in ("Wh", "wh"):
+                value = value / 1000
             if self._wp_first_seen_date is None:
                 self._wp_first_seen_date = date.today()
             if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
@@ -2562,7 +2605,11 @@ class PVManagementController:
             state = self.hass.states.get(self.benchmark_heatpump_entity)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
-                    self._last_wp_kwh = float(state.state)
+                    val = float(state.state)
+                    uom = state.attributes.get("unit_of_measurement", "")
+                    if uom in ("Wh", "wh"):
+                        val = val / 1000
+                    self._last_wp_kwh = val
                     if self._wp_first_seen_date is None:
                         self._wp_first_seen_date = date.today()
                 except (ValueError, TypeError):
@@ -2596,6 +2643,20 @@ class PVManagementController:
             self._restored,
             self._total_self_consumption_kwh,
         )
+
+        # Benchmark-Snapshot auto-initialisieren (erster Start oder nach Migration)
+        if self.benchmark_enabled and self._benchmark_start_date is None:
+            self._benchmark_start_date = date.today()
+            self._benchmark_start_self_consumption = self._total_self_consumption_kwh
+            self._benchmark_start_grid_import = self._tracked_grid_import_kwh
+            self._benchmark_start_feed_in = self._total_feed_in_kwh
+            _LOGGER.info(
+                "Benchmark-Snapshot initialisiert: date=%s, self=%.2f, grid=%.2f, feed=%.2f",
+                self._benchmark_start_date,
+                self._benchmark_start_self_consumption,
+                self._benchmark_start_grid_import,
+                self._benchmark_start_feed_in,
+            )
 
         # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
         if self.restore_from_helper and self.amortisation_helper:
@@ -2653,12 +2714,16 @@ class PVManagementController:
                 setattr(self, key, value)
 
     def reset_benchmark_tracking(self) -> None:
-        """Setzt Benchmark/WP-Tracking zurück."""
+        """Setzt Benchmark/WP-Tracking zurück mit neuem Snapshot."""
         _LOGGER.info("Benchmark-Tracking wird zurückgesetzt (WP war: %.2f kWh)", self._tracked_wp_kwh)
         self._tracked_wp_kwh = 0.0
         self._wp_first_seen_date = None
         self._last_wp_kwh = None
-        self._first_seen_date = None
+        # Neuen Snapshot erstellen
+        self._benchmark_start_date = date.today()
+        self._benchmark_start_self_consumption = self._total_self_consumption_kwh
+        self._benchmark_start_grid_import = self._tracked_grid_import_kwh
+        self._benchmark_start_feed_in = self._total_feed_in_kwh
         self._notify_entities()
 
     def reset_pv_strings_tracking(self) -> None:
