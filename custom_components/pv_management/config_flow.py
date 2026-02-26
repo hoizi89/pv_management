@@ -177,20 +177,30 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             },
         )
 
-    async def _save_and_return_to_menu(self, user_input):
+    async def _save_and_return_to_menu(self, user_input, optional_entity_keys=()):
         """Speichert die Options und zeigt das Menü wieder an."""
+        # Nur die optionalen Entity-Keys der AKTUELLEN Seite auf None setzen,
+        # damit ein entfernter Sensor gelöscht wird ohne andere Seiten zu beeinflussen
+        for key in optional_entity_keys:
+            if key not in user_input and key in self.config_entry.options:
+                user_input[key] = None
+
         self._data.update(user_input)
         # Sofort speichern
         final_data = {}
         final_data.update(self.config_entry.options)
         final_data.update(self._data)
+        # None-Werte aufräumen (verhindert "Entity None" Fehler)
+        final_data = {k: v for k, v in final_data.items() if v is not None}
         self.hass.config_entries.async_update_entry(self.config_entry, options=final_data)
         return await self.async_step_init()
 
     async def async_step_sensors(self, user_input=None):
         """Energie-Sensoren konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_GRID_EXPORT_ENTITY, CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
+                CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY))
 
         return self.async_show_form(
             step_id="sensors",
@@ -215,7 +225,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_prices(self, user_input=None):
         """Strompreise konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY))
 
         return self.async_show_form(
             step_id="prices",
@@ -301,7 +312,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_integrations(self, user_input=None):
         """EPEX Spot und Solcast Integrationen."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY))
 
         return self.async_show_form(
             step_id="integrations",
@@ -434,10 +446,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_benchmark(self, user_input=None):
         """Energie-Benchmark konfigurieren."""
         if user_input is not None:
-            # Clean up optional entity if empty
-            if not user_input.get(CONF_BENCHMARK_HEATPUMP_ENTITY):
-                user_input.pop(CONF_BENCHMARK_HEATPUMP_ENTITY, None)
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_BENCHMARK_HEATPUMP_ENTITY,))
 
         return self.async_show_form(
             step_id="benchmark",
@@ -474,7 +484,11 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_pv_strings(self, user_input=None):
         """PV-Strings konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_2_ENTITY,
+                CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_4_ENTITY,
+                CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
+                CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER))
 
         schema = {}
         for i, (name_key, entity_key, power_key) in enumerate([
