@@ -407,6 +407,18 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "string_tracked_kwh": attrs.get("string_tracked_kwh", {}),
                 "string_first_seen_date": attrs.get("string_first_seen_date"),
                 "string_peak_w": attrs.get("string_peak_w", {}),
+                # Daily tracking
+                "daily_grid_import_kwh": safe_float(attrs.get("daily_grid_import_kwh")),
+                "daily_grid_import_cost": safe_float(attrs.get("daily_grid_import_cost")),
+                "daily_feed_in_earnings": safe_float(attrs.get("daily_feed_in_earnings")),
+                "daily_feed_in_kwh": safe_float(attrs.get("daily_feed_in_kwh")),
+                "daily_reset_date": attrs.get("daily_reset_date"),
+                "quota_day_start_meter": safe_float(attrs.get("quota_day_start_meter")),
+                # Monthly tracking
+                "monthly_grid_import_kwh": safe_float(attrs.get("monthly_grid_import_kwh")),
+                "monthly_grid_import_cost": safe_float(attrs.get("monthly_grid_import_cost")),
+                "monthly_reset_month": attrs.get("monthly_reset_month"),
+                "monthly_reset_year": attrs.get("monthly_reset_year"),
                 # Benchmark Snapshot
                 "benchmark_start_date": attrs.get("benchmark_start_date"),
                 "benchmark_start_self_consumption": safe_float(attrs.get("benchmark_start_self_consumption")),
@@ -462,6 +474,18 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "string_tracked_kwh": self.ctrl._string_tracked_kwh,
             "string_first_seen_date": self.ctrl._string_first_seen_date.isoformat() if self.ctrl._string_first_seen_date else None,
             "string_peak_w": self.ctrl._string_peak_w,
+            # Daily tracking
+            "daily_grid_import_kwh": round(self.ctrl._daily_grid_import_kwh, 4),
+            "daily_grid_import_cost": round(self.ctrl._daily_grid_import_cost, 4),
+            "daily_feed_in_earnings": round(self.ctrl._daily_feed_in_earnings, 4),
+            "daily_feed_in_kwh": round(self.ctrl._daily_feed_in_kwh, 4),
+            "daily_reset_date": date.today().isoformat(),
+            "quota_day_start_meter": self.ctrl._quota_day_start_meter,
+            # Monthly tracking
+            "monthly_grid_import_kwh": round(self.ctrl._monthly_grid_import_kwh, 4),
+            "monthly_grid_import_cost": round(self.ctrl._monthly_grid_import_cost, 4),
+            "monthly_reset_month": date.today().month,
+            "monthly_reset_year": date.today().year,
             # Benchmark Snapshot
             "benchmark_start_date": self.ctrl._benchmark_start_date.isoformat() if self.ctrl._benchmark_start_date else None,
             "benchmark_start_self_consumption": round(self.ctrl._benchmark_start_self_consumption, 4),
@@ -2190,7 +2214,7 @@ class BenchmarkCO2Sensor(BaseEntity):
     """CO2 avoided by PV per year."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "CO2 Vermieden",
+        super().__init__(ctrl, name, "PV CO2 Vermieden",
                          unit="kg/Jahr", icon="mdi:molecule-co2",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2270,7 +2294,7 @@ class BenchmarkAnnualPVSensor(BaseEntity):
     """Hochgerechnete PV-Jahresproduktion."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Jahresproduktion",
+        super().__init__(ctrl, name, "PV Produktion",
                          unit="kWh/Jahr", icon="mdi:solar-power",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
@@ -2287,7 +2311,7 @@ class BenchmarkSpecificYieldSensor(BaseEntity):
     """Spezifischer Ertrag in kWh/kWp."""
 
     def __init__(self, ctrl, name: str):
-        super().__init__(ctrl, name, "Spezifischer Ertrag",
+        super().__init__(ctrl, name, "PV Ertrag",
                          unit="kWh/kWp", icon="mdi:solar-power-variant-outline",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
