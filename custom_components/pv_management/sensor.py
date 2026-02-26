@@ -1534,7 +1534,7 @@ class DailyFeedInSensor(BaseEntity):
             "Einspeisung Heute",
             unit="€",
             icon="mdi:transmission-tower-export",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
@@ -1561,7 +1561,7 @@ class DailyGridImportSensor(BaseEntity):
             "Netzbezug Heute",
             unit="€",
             icon="mdi:transmission-tower-import",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
@@ -1670,7 +1670,7 @@ class DailyNetElectricityCostSensor(BaseEntity):
             "Stromkosten Netto Heute",
             unit="€",
             icon="mdi:cash-register",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
@@ -1731,7 +1731,7 @@ class SpotVsFixedPriceSensor(BaseEntity):
             "Spot vs Fixpreis",
             unit="€",
             icon="mdi:scale-balance",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
