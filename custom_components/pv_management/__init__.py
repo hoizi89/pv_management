@@ -1323,17 +1323,24 @@ class PVManagementController:
         return (self._tracked_wp_kwh / wp_days) * 365
 
     @property
-    def benchmark_consumption_vs_avg(self) -> float | None:
-        """Percentage difference: own vs average. Negative = better.
-
-        If heat pump active: compares against household avg + heat pump avg.
-        """
-        own = self.benchmark_own_annual_consumption_kwh
-        avg = self.benchmark_avg_consumption_kwh
-        if own is None or avg <= 0:
+    def benchmark_household_consumption_kwh(self) -> float | None:
+        """Household consumption without heat pump, extrapolated to 1 year."""
+        total = self.benchmark_own_annual_consumption_kwh
+        if total is None:
             return None
-        wp_avg = self.benchmark_avg_heatpump_kwh or 0
-        return ((own - (avg + wp_avg)) / (avg + wp_avg)) * 100
+        wp = self.benchmark_own_heatpump_kwh or 0.0
+        return max(0.0, total - wp)
+
+    @property
+    def benchmark_consumption_vs_avg(self) -> float | None:
+        """Percentage difference: household (excl. WP) vs average. Negative = better."""
+        household = self.benchmark_household_consumption_kwh
+        if household is None:
+            return None
+        avg = self.benchmark_avg_consumption_kwh
+        if avg <= 0:
+            return None
+        return ((household - avg) / avg) * 100
 
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
