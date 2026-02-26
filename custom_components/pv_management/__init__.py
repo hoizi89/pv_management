@@ -2690,13 +2690,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_remove_config_entry_device(
-    hass: HomeAssistant, entry: ConfigEntry, device_entry
-) -> bool:
-    """Erlaubt das Löschen von Geräten über die UI."""
-    return True
-
-
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Entlädt die Integration."""
     try:
