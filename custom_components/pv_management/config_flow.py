@@ -49,6 +49,8 @@ from .const import (
     CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY,
     CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
     CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER,
+    CONF_PV_STRING_1_KWP, CONF_PV_STRING_2_KWP,
+    CONF_PV_STRING_3_KWP, CONF_PV_STRING_4_KWP,
 )
 
 
@@ -491,11 +493,11 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER))
 
         schema = {}
-        for i, (name_key, entity_key, power_key) in enumerate([
-            (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_1_POWER),
-            (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY, CONF_PV_STRING_2_POWER),
-            (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_3_POWER),
-            (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY, CONF_PV_STRING_4_POWER),
+        for i, (name_key, entity_key, power_key, kwp_key) in enumerate([
+            (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_1_POWER, CONF_PV_STRING_1_KWP),
+            (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY, CONF_PV_STRING_2_POWER, CONF_PV_STRING_2_KWP),
+            (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_3_POWER, CONF_PV_STRING_3_KWP),
+            (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY, CONF_PV_STRING_4_POWER, CONF_PV_STRING_4_KWP),
         ], 1):
             schema[vol.Optional(name_key, default=self._get_val(name_key, ""))] = selector.TextSelector()
             entity_val = self._get_val(entity_key)
@@ -512,6 +514,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             else:
                 schema[vol.Optional(power_key)] = selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor"))
+            schema[vol.Optional(kwp_key, default=self._get_val(kwp_key, 0.0))] = selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.01, unit_of_measurement="kWp", mode="box"))
 
         return self.async_show_form(
             step_id="pv_strings",

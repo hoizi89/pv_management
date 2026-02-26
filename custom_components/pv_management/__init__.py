@@ -258,14 +258,19 @@ class PVManagementController:
 
         # PV-Strings
         self.pv_strings = []  # list of (name, energy_entity_id, power_entity_id_or_None)
-        for name_key, entity_key, power_key in PV_STRING_CONFIGS:
+        for name_key, entity_key, power_key, kwp_key in PV_STRING_CONFIGS:
             s_name = opts.get(name_key, "").strip()
             s_entity = opts.get(entity_key)
             s_power = opts.get(power_key)
+            s_kwp = opts.get(kwp_key, 0.0)
+            try:
+                s_kwp = float(s_kwp) if s_kwp else 0.0
+            except (ValueError, TypeError):
+                s_kwp = 0.0
             if s_name and s_entity:
-                self.pv_strings.append((s_name, s_entity, s_power))
-        self._string_entity_ids = {e for _, e, _ in self.pv_strings}
-        self._string_power_entity_ids = {p for _, _, p in self.pv_strings if p}
+                self.pv_strings.append((s_name, s_entity, s_power, s_kwp))
+        self._string_entity_ids = {e for _, e, _, _ in self.pv_strings}
+        self._string_power_entity_ids = {p for _, _, p, _ in self.pv_strings if p}
 
     @property
     def is_winter(self) -> bool:
@@ -1357,6 +1362,42 @@ class PVManagementController:
         return grid_since_start / days * 365
 
     @property
+    def benchmark_annual_pv_production_kwh(self) -> float | None:
+        """Hochgerechnete PV-Jahresproduktion (snapshot-basiert)."""
+        if self._benchmark_start_date is None:
+            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+        pv_since_start = (
+            (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
+            + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
+        )
+        if pv_since_start <= 0:
+            return None
+        return pv_since_start / days * 365
+
+    @property
+    def total_installed_kwp(self) -> float:
+        """Summe der installierten kWp aller Strings."""
+        return sum(kwp for _, _, _, kwp in self.pv_strings if kwp > 0)
+
+    @property
+    def benchmark_specific_yield(self) -> float | None:
+        """Spezifischer Ertrag in kWh/kWp (Jahresproduktion / installierte Leistung).
+
+        Fallback auf gemessene Peaks wenn keine kWp konfiguriert.
+        """
+        annual = self.benchmark_annual_pv_production_kwh
+        if annual is None:
+            return None
+        kwp = self.total_installed_kwp
+        if kwp <= 0:
+            peak_kw = self.get_total_peak_kw()
+            kwp = peak_kw if peak_kw else 0.0
+        if kwp <= 0:
+            return None
+        return round(annual / kwp, 0)
+
+    @property
     def benchmark_efficiency_score(self) -> int | None:
         """Efficiency score 0-100."""
         comparison = self.benchmark_consumption_vs_avg
@@ -2261,6 +2302,26 @@ class PVManagementController:
         peak = self._string_peak_w.get(power_entity_id, 0.0)
         return round(peak / 1000, 1) if peak > 0 else None
 
+    def get_string_specific_yield(self, energy_entity_id: str, installed_kwp: float) -> float | None:
+        """Spezifischer Ertrag eines Strings in kWh/kWp."""
+        if installed_kwp <= 0:
+            return None
+        tracked = self._string_tracked_kwh.get(energy_entity_id, 0.0)
+        if tracked <= 0 or self._string_first_seen_date is None:
+            return None
+        days = max(1, (date.today() - self._string_first_seen_date).days)
+        annual = tracked / days * 365
+        return round(annual / installed_kwp, 0)
+
+    def get_string_performance_ratio(self, power_entity_id: str, installed_kwp: float) -> float | None:
+        """Performance Ratio: gemessener Peak / installierte Leistung in %."""
+        if not power_entity_id or installed_kwp <= 0:
+            return None
+        peak_kw = self._string_peak_w.get(power_entity_id, 0.0) / 1000
+        if peak_kw <= 0:
+            return None
+        return round(peak_kw / installed_kwp * 100, 1)
+
     def get_total_daily_production_kwh(self) -> float | None:
         """Durchschnittliche Tagesproduktion aller Strings zusammen."""
         if not self._string_first_seen_date or not self._string_tracked_kwh:
@@ -2616,7 +2677,7 @@ class PVManagementController:
                     pass
 
         # PV-Strings initialisieren
-        for _, entity_id, power_entity in self.pv_strings:
+        for _, entity_id, power_entity, _ in self.pv_strings:
             state = self.hass.states.get(entity_id)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
