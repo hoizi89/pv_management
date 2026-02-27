@@ -155,6 +155,9 @@ async def async_setup_entry(
             BenchmarkScoreSensor(ctrl, name),
             BenchmarkRatingSensor(ctrl, name),
         ])
+        # Monthly bucket sensors (rolling 12-month)
+        for month in range(1, 13):
+            entities.append(BenchmarkMonthlySensor(ctrl, name, month))
         if ctrl.pv_strings:
             entities.append(BenchmarkSpecificYieldSensor(ctrl, name))
         if ctrl.benchmark_heatpump:
@@ -424,6 +427,8 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "benchmark_start_self_consumption": safe_float(attrs.get("benchmark_start_self_consumption")),
                 "benchmark_start_grid_import": safe_float(attrs.get("benchmark_start_grid_import")),
                 "benchmark_start_feed_in": safe_float(attrs.get("benchmark_start_feed_in")),
+                "monthly_buckets": attrs.get("monthly_buckets", {}),
+                "monthly_bucket_month": attrs.get("monthly_bucket_month"),
             }
 
             _LOGGER.info(
@@ -491,6 +496,8 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "benchmark_start_self_consumption": round(self.ctrl._benchmark_start_self_consumption, 4),
             "benchmark_start_grid_import": round(self.ctrl._benchmark_start_grid_import, 4),
             "benchmark_start_feed_in": round(self.ctrl._benchmark_start_feed_in, 4),
+            "monthly_buckets": {str(k): v for k, v in self.ctrl._monthly_buckets.items()},
+            "monthly_bucket_month": self.ctrl._monthly_bucket_month,
             # Info
             "calculation_method": "incremental (dynamic prices supported)",
         }
@@ -2135,6 +2142,47 @@ class AutoChargeDiagnosticSensor(BaseEntity):
 # =============================================================================
 # BENCHMARK SENSORS
 # =============================================================================
+
+MONTH_NAMES_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+                  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+
+
+class BenchmarkMonthlySensor(BaseEntity):
+    """Shows the stored monthly bucket value."""
+
+    def __init__(self, ctrl, name: str, month: int):
+        self._month = month
+        key = f"Benchmark {MONTH_NAMES_DE[month - 1]}"
+        super().__init__(
+            ctrl, name, key,
+            unit="kWh",
+            icon="mdi:calendar-month",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.ENERGY,
+            device_type=DEVICE_BENCHMARK,
+        )
+
+    @property
+    def native_value(self):
+        bucket = self.ctrl._monthly_buckets.get(self._month)
+        if bucket is None:
+            return None
+        return round(
+            bucket.get("self_consumption", 0.0) + bucket.get("grid_import", 0.0), 1
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        bucket = self.ctrl._monthly_buckets.get(self._month)
+        if bucket is None:
+            return {}
+        return {
+            "self_consumption_kwh": round(bucket.get("self_consumption", 0.0), 1),
+            "grid_import_kwh": round(bucket.get("grid_import", 0.0), 1),
+            "feed_in_kwh": round(bucket.get("feed_in", 0.0), 1),
+            "wp_kwh": round(bucket.get("wp", 0.0), 1),
+        }
+
 
 class BenchmarkAvgSensor(BaseEntity):
     """Reference average consumption for country/household size."""
