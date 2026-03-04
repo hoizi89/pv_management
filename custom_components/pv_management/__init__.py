@@ -2139,6 +2139,7 @@ class PVManagementController:
                     self._daily_grid_import_cost = safe_float(data.get("daily_grid_import_cost"))
                     self._daily_feed_in_earnings = safe_float(data.get("daily_feed_in_earnings"))
                     self._daily_feed_in_kwh = safe_float(data.get("daily_feed_in_kwh"))
+                    self._daily_tracking_date = today
                     _LOGGER.info(
                         "Daily Strompreis-Tracking wiederhergestellt: %.2f kWh, %.2f €",
                         self._daily_grid_import_kwh, self._daily_grid_import_cost
@@ -2158,6 +2159,7 @@ class PVManagementController:
                     # Gleicher Monat - Werte wiederherstellen
                     self._monthly_grid_import_kwh = safe_float(data.get("monthly_grid_import_kwh"))
                     self._monthly_grid_import_cost = safe_float(data.get("monthly_grid_import_cost"))
+                    self._monthly_tracking_month = today.month
                     _LOGGER.info(
                         "Monthly Strompreis-Tracking wiederhergestellt: %.2f kWh, %.2f €",
                         self._monthly_grid_import_kwh, self._monthly_grid_import_cost
