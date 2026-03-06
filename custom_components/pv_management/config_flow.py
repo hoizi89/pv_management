@@ -165,6 +165,15 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             return self.config_entry.data[key]
         return default
 
+    def _optional_entity(self, key, domain="sensor"):
+        """Returns a dict entry for an optional EntitySelector with safe default handling."""
+        val = self._get_val(key)
+        if val:
+            return {vol.Optional(key, default=val): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=domain))}
+        return {vol.Optional(key): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=domain))}
+
     async def async_step_init(self, user_input=None):
         """Hauptmenü mit Kategorien."""
         return self.async_show_menu(
@@ -212,18 +221,12 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(CONF_PV_PRODUCTION_ENTITY, default=self._get_val(CONF_PV_PRODUCTION_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_GRID_EXPORT_ENTITY, default=self._get_val(CONF_GRID_EXPORT_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_GRID_IMPORT_ENTITY, default=self._get_val(CONF_GRID_IMPORT_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_CONSUMPTION_ENTITY, default=self._get_val(CONF_CONSUMPTION_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_BATTERY_SOC_ENTITY, default=self._get_val(CONF_BATTERY_SOC_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_PV_POWER_ENTITY, default=self._get_val(CONF_PV_POWER_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_PV_FORECAST_ENTITY, default=self._get_val(CONF_PV_FORECAST_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                **self._optional_entity(CONF_GRID_EXPORT_ENTITY),
+                **self._optional_entity(CONF_GRID_IMPORT_ENTITY),
+                **self._optional_entity(CONF_CONSUMPTION_ENTITY),
+                **self._optional_entity(CONF_BATTERY_SOC_ENTITY),
+                **self._optional_entity(CONF_PV_POWER_ENTITY),
+                **self._optional_entity(CONF_PV_FORECAST_ENTITY),
             })
         )
 
@@ -251,8 +254,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=0.0, max=100.0, step=0.01, mode=selector.NumberSelectorMode.BOX)
                     ),
-                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY, default=self._get_val(CONF_ELECTRICITY_PRICE_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                **self._optional_entity(CONF_ELECTRICITY_PRICE_ENTITY, "sensor"),
 
                 # Einspeisevergütung
                 vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=self._get_val(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)):
@@ -269,8 +271,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.001, mode=selector.NumberSelectorMode.BOX)
                     ),
-                vol.Optional(CONF_FEED_IN_TARIFF_ENTITY, default=self._get_val(CONF_FEED_IN_TARIFF_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                **self._optional_entity(CONF_FEED_IN_TARIFF_ENTITY, "sensor"),
 
                 # Fixpreis-Vergleich (für Spot vs. Fixpreis Berechnung)
                 vol.Optional(CONF_FIXED_PRICE_COMPARE, default=self._get_val(CONF_FIXED_PRICE_COMPARE, DEFAULT_FIXED_PRICE_COMPARE)):
@@ -324,14 +325,10 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             step_id="integrations",
             data_schema=vol.Schema({
                 # EPEX Spot
-                vol.Optional(CONF_EPEX_PRICE_ENTITY, default=self._get_val(CONF_EPEX_PRICE_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_EPEX_QUANTILE_ENTITY, default=self._get_val(CONF_EPEX_QUANTILE_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-
+                **self._optional_entity(CONF_EPEX_PRICE_ENTITY),
+                **self._optional_entity(CONF_EPEX_QUANTILE_ENTITY),
                 # Solcast
-                vol.Optional(CONF_SOLCAST_FORECAST_ENTITY, default=self._get_val(CONF_SOLCAST_FORECAST_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                **self._optional_entity(CONF_SOLCAST_FORECAST_ENTITY),
             })
         )
 
@@ -481,8 +478,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Optional(CONF_BENCHMARK_HEATPUMP, default=self._get_val(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)):
                     selector.BooleanSelector(),
-                vol.Optional(CONF_BENCHMARK_HEATPUMP_ENTITY, default=self._get_val(CONF_BENCHMARK_HEATPUMP_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                **self._optional_entity(CONF_BENCHMARK_HEATPUMP_ENTITY),
             })
         )
 
