@@ -2,57 +2,57 @@
   "config": {
     "step": {
       "user": {
-        "title": "PV Management einrichten",
-        "description": "Berechnet Amortisation und gibt Verbrauchsempfehlungen.",
+        "title": "Set up PV Management",
+        "description": "Calculates amortisation and provides consumption recommendations.",
         "data": {
           "name": "Name",
-          "pv_production_entity": "PV Produktion Sensor (kWh)",
-          "grid_export_entity": "Netzeinspeisung Sensor (kWh, optional)",
-          "grid_import_entity": "Netzbezug Sensor (kWh, optional)",
-          "consumption_entity": "Hausverbrauch Sensor (kWh, optional)",
-          "battery_soc_entity": "Batterie-Ladestand Sensor (%, optional)",
-          "pv_power_entity": "PV-Leistung Sensor (W, optional)",
-          "pv_forecast_entity": "PV-Prognose Sensor (kWh, optional)",
-          "electricity_price_unit": "Strompreis-Einheit",
-          "electricity_price": "Strompreis (Fallback)",
-          "electricity_price_entity": "Dynamischer Strompreis Sensor (optional)",
-          "feed_in_tariff_unit": "Einspeiseverguetung-Einheit",
-          "feed_in_tariff": "Einspeiseverguetung (Fallback)",
-          "feed_in_tariff_entity": "Dynamische Einspeiseverguetung Sensor (optional)",
-          "installation_cost": "Anschaffungskosten",
-          "installation_date": "Installationsdatum (optional)",
-          "savings_offset": "Bereits amortisiert (Offset)",
-          "energy_offset_self_consumption": "Eigenverbrauch vor Tracking (kWh)",
-          "energy_offset_export": "Einspeisung vor Tracking (kWh)"
+          "pv_production_entity": "PV Production Sensor (kWh)",
+          "grid_export_entity": "Grid Export Sensor (kWh, optional)",
+          "grid_import_entity": "Grid Import Sensor (kWh, optional)",
+          "consumption_entity": "Household Consumption Sensor (kWh, optional)",
+          "battery_soc_entity": "Battery SOC Sensor (%, optional)",
+          "pv_power_entity": "PV Power Sensor (W, optional)",
+          "pv_forecast_entity": "PV Forecast Sensor (kWh, optional)",
+          "electricity_price_unit": "Electricity Price Unit",
+          "electricity_price": "Electricity Price (Fallback)",
+          "electricity_price_entity": "Dynamic Electricity Price Sensor (optional)",
+          "feed_in_tariff_unit": "Feed-in Tariff Unit",
+          "feed_in_tariff": "Feed-in Tariff (Fallback)",
+          "feed_in_tariff_entity": "Dynamic Feed-in Tariff Sensor (optional)",
+          "installation_cost": "Installation Cost",
+          "installation_date": "Installation Date (optional)",
+          "savings_offset": "Already amortised (Offset)",
+          "energy_offset_self_consumption": "Self consumption before tracking (kWh)",
+          "energy_offset_export": "Feed-in before tracking (kWh)"
         },
         "data_description": {
-          "name": "Name fuer diese PV-Anlage",
-          "pv_production_entity": "Sensor der die gesamte PV-Produktion in kWh misst",
-          "grid_export_entity": "Sensor fuer Netzeinspeisung in kWh",
-          "grid_import_entity": "Sensor fuer Netzbezug in kWh",
-          "consumption_entity": "Sensor fuer Gesamtverbrauch des Haushalts in kWh",
-          "battery_soc_entity": "Sensor fuer Batterie-Ladestand in % (fuer Empfehlung)",
-          "pv_power_entity": "Sensor fuer aktuelle PV-Leistung in W (fuer Empfehlung)",
-          "pv_forecast_entity": "Sensor fuer PV-Tagesprognose in kWh (fuer Empfehlung)",
-          "electricity_price_unit": "Waehle ob der Strompreis in Euro oder Cent pro kWh angegeben wird",
-          "electricity_price": "Wird verwendet wenn kein Sensor konfiguriert oder Sensor nicht verfuegbar",
-          "electricity_price_entity": "Wenn konfiguriert, wird dieser Wert verwendet. Bei Ausfall: Fallback auf obigen Wert",
-          "feed_in_tariff_unit": "Waehle ob die Einspeiseverguetung in Euro oder Cent pro kWh angegeben wird",
-          "feed_in_tariff": "Wird verwendet wenn kein Sensor konfiguriert oder Sensor nicht verfuegbar",
-          "feed_in_tariff_entity": "Wenn konfiguriert, wird dieser Wert verwendet. Bei Ausfall: Fallback auf obigen Wert",
-          "installation_cost": "Gesamtkosten der PV-Anlage inklusive Installation",
-          "installation_date": "Datum der Installation fuer genaue Statistiken",
-          "savings_offset": "ACHTUNG: Nur verwenden wenn keine kWh-Offsets eingegeben! Bereits amortisierter Betrag in Euro",
-          "energy_offset_self_consumption": "ACHTUNG: Nur verwenden wenn kein Euro-Offset eingegeben! Eigenverbrauch vor Tracking",
-          "energy_offset_export": "ACHTUNG: Nur verwenden wenn kein Euro-Offset eingegeben! Einspeisung vor Tracking"
+          "name": "Name for this PV system",
+          "pv_production_entity": "Sensor measuring total PV production in kWh",
+          "grid_export_entity": "Sensor for grid export in kWh",
+          "grid_import_entity": "Sensor for grid import in kWh",
+          "consumption_entity": "Sensor for total household consumption in kWh",
+          "battery_soc_entity": "Sensor for battery state of charge in % (for recommendation)",
+          "pv_power_entity": "Sensor for current PV power in W (for recommendation)",
+          "pv_forecast_entity": "Sensor for daily PV forecast in kWh (for recommendation)",
+          "electricity_price_unit": "Choose whether electricity price is in Euro or Cent per kWh",
+          "electricity_price": "Used when no sensor is configured or sensor is unavailable",
+          "electricity_price_entity": "When configured, this value is used. On failure: fallback to above value",
+          "feed_in_tariff_unit": "Choose whether feed-in tariff is in Euro or Cent per kWh",
+          "feed_in_tariff": "Used when no sensor is configured or sensor is unavailable",
+          "feed_in_tariff_entity": "When configured, this value is used. On failure: fallback to above value",
+          "installation_cost": "Total cost of PV system including installation",
+          "installation_date": "Installation date for accurate statistics",
+          "savings_offset": "WARNING: Only use if no kWh offsets entered! Already amortised amount in Euro",
+          "energy_offset_self_consumption": "WARNING: Only use if no Euro offset entered! Self consumption before tracking",
+          "energy_offset_export": "WARNING: Only use if no Euro offset entered! Feed-in before tracking"
         }
       }
     },
     "error": {
-      "unknown": "Ein unbekannter Fehler ist aufgetreten"
+      "unknown": "An unknown error occurred"
     },
     "abort": {
-      "already_configured": "Diese PV-Anlage wurde bereits konfiguriert"
+      "already_configured": "This PV system has already been configured"
     }
   },
   "options": {
@@ -265,15 +265,71 @@
   "selector": {
     "electricity_price_unit": {
       "options": {
-        "eur": "Euro pro kWh",
-        "cent": "Cent pro kWh"
+        "eur": "Euro per kWh",
+        "cent": "Cent per kWh"
       }
     },
     "feed_in_tariff_unit": {
       "options": {
-        "eur": "Euro pro kWh",
-        "cent": "Cent pro kWh"
+        "eur": "Euro per kWh",
+        "cent": "Cent per kWh"
       }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "amortisation": { "name": "Amortisation" },
+      "gesamtersparnis": { "name": "Total Savings" },
+      "amort_restbetrag": { "name": "Remaining Amount" },
+      "amort_status": { "name": "Amort. Status" },
+      "eigenverbrauch": { "name": "Self Consumption" },
+      "einspeisung": { "name": "Feed-in" },
+      "pv_produktion": { "name": "PV Production" },
+      "ersparnis_eigenverbrauch": { "name": "Savings Self Consumption" },
+      "einnahmen_einspeisung": { "name": "Earnings Feed-in" },
+      "eigenverbrauchsquote": { "name": "Self Consumption Ratio" },
+      "autarkiegrad": { "name": "Autarky Rate" },
+      "amort_ersparnis_tag": { "name": "Amort. Savings/Day" },
+      "amort_ersparnis_monat": { "name": "Amort. Savings/Month" },
+      "amort_ersparnis_jahr": { "name": "Amort. Savings/Year" },
+      "amort_tage": { "name": "Amort. Days" },
+      "amort_restlaufzeit": { "name": "Amort. Remaining Time" },
+      "amort_datum": { "name": "Amort. Date" },
+      "co2_ersparnis": { "name": "CO2 Savings" },
+      "strompreis": { "name": "Electricity Price" },
+      "preis_einspeisung": { "name": "Feed-in Tariff" },
+      "amort_kosten": { "name": "Installation Cost" },
+      "konfiguration": { "name": "Configuration" },
+      "verbrauchsempfehlung": { "name": "Consumption Recommendation" },
+      "nächste_günstige_stunde": { "name": "Next Cheap Hour" },
+      "tages_einspeisung": { "name": "Daily Feed-in" },
+      "tages_netzbezug": { "name": "Daily Grid Import" },
+      "ø_strompreis_heute": { "name": "Avg. Electricity Price Today" },
+      "ø_strompreis_monat": { "name": "Avg. Electricity Price Month" },
+      "ø_strompreis_gesamt": { "name": "Avg. Electricity Price Total" },
+      "tages_stromkosten": { "name": "Daily Electricity Cost" },
+      "netzbezug_kosten": { "name": "Grid Import Cost" },
+      "spot_vs_fixpreis": { "name": "Spot vs Fixed Price" },
+      "ladegrund": { "name": "Charge Reason" },
+      "preisdifferenz_heute": { "name": "Price Difference Today" },
+      "pv_prognose_heute": { "name": "PV Forecast Today" },
+      "preis_quantile": { "name": "Price Quantile" },
+      "bedingungen": { "name": "Conditions" },
+      "auto-charge_diagnose": { "name": "Auto-Charge Diagnostic" },
+      "haus_durchschnitt": { "name": "Household Average" },
+      "gesamtverbrauch": { "name": "Total Consumption" },
+      "haus_verbrauch": { "name": "Household Consumption" },
+      "haus_vergleich": { "name": "Household Comparison" },
+      "pv_co2_vermieden": { "name": "PV CO2 Avoided" },
+      "effizienz_score": { "name": "Efficiency Score" },
+      "bewertung": { "name": "Rating" },
+      "netz_bezug": { "name": "Grid Import" },
+      "pv_ertrag": { "name": "PV Yield" },
+      "wp_durchschnitt": { "name": "Heat Pump Average" },
+      "wp_verbrauch": { "name": "Heat Pump Consumption" },
+      "wp_vergleich": { "name": "Heat Pump Comparison" },
+      "gesamt_tagesproduktion": { "name": "Total Daily Production" },
+      "gesamt_peak": { "name": "Total Peak" }
     }
   }
 }

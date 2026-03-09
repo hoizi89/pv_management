@@ -25,46 +25,46 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Geräte-Typen für bessere Übersicht
-DEVICE_MAIN = "main"            # PV Management (Haupt)
-DEVICE_BATTERY = "battery"      # PV Batterie
-DEVICE_PRICES = "prices"        # PV Strompreise
-DEVICE_BENCHMARK = "benchmark"  # Energie-Benchmark
+# Device types for grouping sensors
+DEVICE_MAIN = "main"
+DEVICE_BATTERY = "battery"
+DEVICE_PRICES = "prices"
+DEVICE_BENCHMARK = "benchmark"
 DEVICE_PV_STRINGS = "pv_strings"
 
 
 def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
-    """Erstellt DeviceInfo für verschiedene Geräte-Typen."""
+    """Create DeviceInfo for different device types."""
     if device_type == DEVICE_BATTERY:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{name}_battery")},
-            name=f"{name} Batterie",
+            name=f"{name} Battery",
             manufacturer="Custom",
-            model="PV Management - Batterie",
+            model="PV Management - Battery",
             via_device=(DOMAIN, name),
         )
     elif device_type == DEVICE_PRICES:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{name}_prices")},
-            name=f"{name} Strompreise",
+            name=f"{name} Electricity Prices",
             manufacturer="Custom",
-            model="PV Management - Strompreise",
+            model="PV Management - Electricity Prices",
             via_device=(DOMAIN, name),
         )
     elif device_type == DEVICE_BENCHMARK:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{name}_benchmark")},
-            name=f"{name} Energie-Benchmark",
+            name=f"{name} Energy Benchmark",
             manufacturer="Custom",
-            model="PV Management - Energie-Benchmark",
+            model="PV Management - Energy Benchmark",
             via_device=(DOMAIN, name),
         )
     elif device_type == DEVICE_PV_STRINGS:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{name}_pv_strings")},
-            name=f"{name} PV-Strings",
+            name=f"{name} PV Strings",
             manufacturer="Custom",
-            model="PV Management - PV-Strings",
+            model="PV Management - PV Strings",
             via_device=(DOMAIN, name),
         )
     else:  # DEVICE_MAIN
@@ -79,62 +79,62 @@ def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
-    """Setup der Sensoren."""
+    """Set up sensors."""
     ctrl = hass.data[DOMAIN][entry.entry_id][DATA_CTRL]
     name = entry.data.get(CONF_NAME, "PV Management")
 
     entities = [
-        # === EMPFEHLUNG (wichtigste für tägliche Nutzung) ===
+        # === RECOMMENDATION (most important for daily use) ===
         ConsumptionRecommendationSensor(ctrl, name),
         NextCheapHourSensor(ctrl, name),
 
-        # === AMORTISATION (Hauptzweck) ===
+        # === AMORTISATION (main purpose) ===
         AmortisationPercentSensor(ctrl, name),
-        TotalSavingsSensor(ctrl, name),  # Dieser speichert persistent!
+        TotalSavingsSensor(ctrl, name),  # This one stores persistently!
         RemainingCostSensor(ctrl, name),
         StatusSensor(ctrl, name),
         EstimatedPaybackDateSensor(ctrl, name),
         EstimatedRemainingDaysSensor(ctrl, name),
 
-        # === ENERGIE ===
+        # === ENERGY ===
         SelfConsumptionSensor(ctrl, name),
         FeedInSensor(ctrl, name),
         SelfConsumptionRatioSensor(ctrl, name),
         AutarkyRateSensor(ctrl, name),
 
-        # === FINANZEN ===
+        # === FINANCE ===
         SavingsSelfConsumptionSensor(ctrl, name),
         EarningsFeedInSensor(ctrl, name),
 
-        # === STATISTIK ===
+        # === STATISTICS ===
         AverageDailySavingsSensor(ctrl, name),
         AverageMonthlySavingsSensor(ctrl, name),
         AverageYearlySavingsSensor(ctrl, name),
         DaysSinceInstallationSensor(ctrl, name),
 
-        # === UMWELT ===
+        # === ENVIRONMENT ===
         CO2SavedSensor(ctrl, name),
 
-        # === DIAGNOSE ===
+        # === DIAGNOSTIC ===
         CurrentElectricityPriceSensor(ctrl, name),
         CurrentFeedInTariffSensor(ctrl, name),
         PVProductionSensor(ctrl, name),
         InstallationCostSensor(ctrl, name),
         ConfigurationDiagnosticSensor(ctrl, name, entry),
 
-        # === TÄGLICHE STROMKOSTEN ===
+        # === DAILY ELECTRICITY COSTS ===
         DailyFeedInSensor(ctrl, name),
         DailyGridImportSensor(ctrl, name),
         DailyNetElectricityCostSensor(ctrl, name),
 
-        # === STROMPREIS-DURCHSCHNITT ===
+        # === ELECTRICITY PRICE AVERAGE ===
         DailyAveragePriceSensor(ctrl, name),
         MonthlyAveragePriceSensor(ctrl, name),
         AverageElectricityPriceSensor(ctrl, name),
         TotalGridImportCostSensor(ctrl, name),
-        SpotVsFixedPriceSensor(ctrl, name),  # NEU: Vergleich Spot vs. Fixpreis
+        SpotVsFixedPriceSensor(ctrl, name),  # Spot vs fixed price comparison
 
-        # === AUTO-CHARGE BATTERIE ===
+        # === AUTO-CHARGE BATTERY ===
         AutoChargeReasonSensor(ctrl, name),
         AutoChargePriceDiffSensor(ctrl, name),
         AutoChargePVForecastSensor(ctrl, name),
@@ -165,7 +165,7 @@ async def async_setup_entry(
                 BenchmarkHouseholdSensor(ctrl, name),
             ])
 
-    # === PV-STRINGS (optional) ===
+    # === PV STRINGS (optional) ===
     if ctrl.pv_strings:
         entities.append(TotalDailyProductionSensor(ctrl, name))
         for i, (string_name, string_entity, power_entity, installed_kwp) in enumerate(ctrl.pv_strings):
@@ -189,7 +189,7 @@ async def async_setup_entry(
 
 
 class BaseEntity(SensorEntity):
-    """Basis-Klasse für alle Sensoren."""
+    """Base class for all sensors."""
 
     _attr_should_poll = False
     _attr_has_entity_name = True
@@ -208,7 +208,7 @@ class BaseEntity(SensorEntity):
     ):
         self.ctrl = ctrl
         self._base_name = name
-        self._attr_name = key
+        self._attr_translation_key = key.lower().replace(' ', '_').replace('/', '_')
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_{key.lower().replace(' ', '_')}"
         self._attr_native_unit_of_measurement = unit
@@ -221,7 +221,7 @@ class BaseEntity(SensorEntity):
 
     @property
     def available(self) -> bool:
-        """Sensor ist erst verfügbar wenn gespeicherte Daten wiederhergestellt sind."""
+        """Sensor is only available after stored data has been restored."""
         return getattr(self.ctrl, "_restored", True)
 
     async def async_added_to_hass(self):
@@ -229,7 +229,7 @@ class BaseEntity(SensorEntity):
         self.ctrl.register_entity_listener(self._on_ctrl_update)
 
     async def async_will_remove_from_hass(self):
-        """Entfernt den Listener wenn die Entity entladen wird."""
+        """Remove listener when entity is unloaded."""
         self._removed = True
         self.ctrl.unregister_entity_listener(self._on_ctrl_update)
 
@@ -240,7 +240,7 @@ class BaseEntity(SensorEntity):
 
 
 class PVStringSensor(BaseEntity):
-    """Generischer Sensor für PV-String Vergleich."""
+    """Generic sensor for PV string comparison."""
 
     def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, power_entity_id: str | None, installed_kwp: float, sensor_type: str):
         self._string_entity_id = entity_id
@@ -269,6 +269,9 @@ class PVStringSensor(BaseEntity):
         key = f"{string_name} {uid_suffix}"
 
         super().__init__(ctrl, name, key, unit=unit, icon=icon, state_class=state_class, device_type=DEVICE_PV_STRINGS)
+        # PVStringSensor uses dynamic user-configured names, so disable translation_key
+        self._attr_translation_key = None
+        self._attr_name = key
 
     @property
     def native_value(self):
@@ -295,7 +298,7 @@ class PVStringSensor(BaseEntity):
 
 
 class TotalDailyProductionSensor(BaseEntity):
-    """Durchschnittliche Tagesproduktion aller PV-Strings."""
+    """Average daily production across all PV strings."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(ctrl, name, "Gesamt Tagesproduktion", unit="kWh/Tag", icon="mdi:weather-sunny",
@@ -307,7 +310,7 @@ class TotalDailyProductionSensor(BaseEntity):
 
 
 class TotalPeakSensor(BaseEntity):
-    """Gesamt-Peak aller PV-Strings."""
+    """Total peak across all PV strings."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(ctrl, name, "Gesamt Peak", unit="kW", icon="mdi:solar-power-variant",
@@ -319,12 +322,12 @@ class TotalPeakSensor(BaseEntity):
 
 
 # =============================================================================
-# HAUPT-SENSOREN
+# MAIN SENSORS
 # =============================================================================
 
 
 class AmortisationPercentSensor(BaseEntity):
-    """Amortisation in Prozent - Hauptindikator."""
+    """Amortisation percentage - main indicator."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -352,10 +355,10 @@ class AmortisationPercentSensor(BaseEntity):
 
 class TotalSavingsSensor(BaseEntity, RestoreEntity):
     """
-    Gesamtersparnis in Euro.
+    Total savings in Euro.
 
-    WICHTIG: Dieser Sensor speichert die inkrementell berechneten Werte
-    persistent, damit sie über Neustarts erhalten bleiben!
+    IMPORTANT: This sensor stores the incrementally calculated values
+    persistently so they survive restarts!
     """
 
     def __init__(self, ctrl, name: str):
@@ -370,16 +373,16 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
         )
 
     async def async_added_to_hass(self):
-        """Wiederherstellen des gespeicherten Zustands."""
+        """Restore saved state."""
         await super().async_added_to_hass()
 
-        # Versuche letzten Zustand zu laden
+        # Try to load last state
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in ("unknown", "unavailable"):
-            # Lade die extra_state_attributes für die vollständigen Daten
+            # Load extra_state_attributes for the complete data
             attrs = last_state.attributes or {}
 
-            # Explizite Float-Konvertierung (HA speichert manchmal als String)
+            # Explicit float conversion (HA sometimes stores as string)
             def safe_float(val, default=0.0):
                 try:
                     return float(val) if val is not None else default
@@ -392,18 +395,18 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "accumulated_savings_self": safe_float(attrs.get("accumulated_savings_self")),
                 "accumulated_earnings_feed": safe_float(attrs.get("accumulated_earnings_feed")),
                 "first_seen_date": attrs.get("first_seen_date"),
-                # Strompreis-Tracking
+                # Electricity price tracking
                 "tracked_grid_import_kwh": safe_float(attrs.get("tracked_grid_import_kwh")),
                 "total_grid_import_cost": safe_float(attrs.get("total_grid_import_cost")),
-                # Auto-Charge Statistiken
+                # Auto-Charge statistics
                 "auto_charge_count": safe_float(attrs.get("auto_charge_count")),
                 "auto_charge_total_hours": safe_float(attrs.get("auto_charge_total_hours")),
                 "auto_charge_total_kwh": safe_float(attrs.get("auto_charge_total_kwh")),
                 "auto_charge_estimated_savings": safe_float(attrs.get("auto_charge_estimated_savings")),
-                # WP Delta-Tracking
+                # Heat pump delta tracking
                 "tracked_wp_kwh": safe_float(attrs.get("tracked_wp_kwh")),
                 "wp_first_seen_date": attrs.get("wp_first_seen_date"),
-                # PV-String Delta-Tracking
+                # PV string delta tracking
                 "string_tracked_kwh": attrs.get("string_tracked_kwh", {}),
                 "string_first_seen_date": attrs.get("string_first_seen_date"),
                 "string_peak_w": attrs.get("string_peak_w", {}),
@@ -437,9 +440,9 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             )
 
             self.ctrl.restore_state(restore_data)
-            _LOGGER.info("TotalSavingsSensor: Zustand wiederhergestellt")
+            _LOGGER.info("TotalSavingsSensor: State restored")
 
-            # Explizites State-Update nach Restore
+            # Explicit state update after restore
             self.async_write_ha_state()
 
     @property
@@ -449,30 +452,30 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """
-        Speichert alle wichtigen Werte als Attribute.
-        Diese werden von RestoreEntity wiederhergestellt.
+        Store all important values as attributes.
+        These are restored by RestoreEntity.
         """
         return {
             "savings_self_consumption": f"{self.ctrl.savings_self_consumption:.2f}€",
             "earnings_feed_in": f"{self.ctrl.earnings_feed_in:.2f}€",
-            # Inkrementell berechnete Werte (werden restored)
+            # Incrementally calculated values (will be restored)
             "tracked_self_consumption_kwh": round(self.ctrl._total_self_consumption_kwh, 4),
             "tracked_feed_in_kwh": round(self.ctrl._total_feed_in_kwh, 4),
             "accumulated_savings_self": round(self.ctrl._accumulated_savings_self, 4),
             "accumulated_earnings_feed": round(self.ctrl._accumulated_earnings_feed, 4),
             "first_seen_date": self.ctrl._first_seen_date.isoformat() if self.ctrl._first_seen_date else None,
-            # Strompreis-Tracking (werden restored)
+            # Electricity price tracking (will be restored)
             "tracked_grid_import_kwh": round(self.ctrl._tracked_grid_import_kwh, 4),
             "total_grid_import_cost": round(self.ctrl._total_grid_import_cost, 4),
-            # Auto-Charge Statistiken (werden restored)
+            # Auto-Charge statistics (will be restored)
             "auto_charge_count": self.ctrl._auto_charge_count,
             "auto_charge_total_hours": round(self.ctrl._auto_charge_total_hours, 2),
             "auto_charge_total_kwh": round(self.ctrl._auto_charge_total_kwh, 2),
             "auto_charge_estimated_savings": round(self.ctrl._auto_charge_estimated_savings, 2),
-            # WP Delta-Tracking (persistent)
+            # Heat pump delta tracking (persistent)
             "tracked_wp_kwh": round(self.ctrl._tracked_wp_kwh, 4),
             "wp_first_seen_date": self.ctrl._wp_first_seen_date.isoformat() if self.ctrl._wp_first_seen_date else None,
-            # PV-String Delta-Tracking (persistent)
+            # PV string delta tracking (persistent)
             "string_tracked_kwh": self.ctrl._string_tracked_kwh,
             "string_first_seen_date": self.ctrl._string_first_seen_date.isoformat() if self.ctrl._string_first_seen_date else None,
             "string_peak_w": self.ctrl._string_peak_w,
@@ -501,7 +504,7 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
 
 
 class RemainingCostSensor(BaseEntity):
-    """Verbleibender Betrag bis Amortisation."""
+    """Remaining amount until amortisation."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -510,7 +513,7 @@ class RemainingCostSensor(BaseEntity):
             "Amort Restbetrag",
             unit="€",
             icon="mdi:cash-minus",
-            # state_class muss None sein für device_class=MONETARY (nicht MEASUREMENT)
+            # state_class must be None for device_class=MONETARY (not MEASUREMENT)
             state_class=None,
             device_class=SensorDeviceClass.MONETARY,
         )
@@ -527,7 +530,7 @@ class RemainingCostSensor(BaseEntity):
 
 
 class StatusSensor(BaseEntity):
-    """Status-Text (z.B. '45.2% amortisiert' oder 'Amortisiert!')."""
+    """Status text (e.g. '45.2% amortised' or 'Amortised!')."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -566,12 +569,12 @@ class StatusSensor(BaseEntity):
 
 
 # =============================================================================
-# ENERGIE-SENSOREN
+# ENERGY SENSORS
 # =============================================================================
 
 
 class SelfConsumptionSensor(BaseEntity):
-    """Eigenverbrauch in kWh (inkrementell berechnet)."""
+    """Self consumption in kWh (incrementally calculated)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -589,7 +592,7 @@ class SelfConsumptionSensor(BaseEntity):
         return round(self.ctrl.self_consumption_kwh, 2)
 
 class FeedInSensor(BaseEntity):
-    """Netzeinspeisung in kWh (inkrementell berechnet)."""
+    """Grid feed-in in kWh (incrementally calculated)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -608,7 +611,7 @@ class FeedInSensor(BaseEntity):
 
 
 class PVProductionSensor(BaseEntity):
-    """PV-Produktion in kWh (gespiegelt vom Input-Sensor)."""
+    """PV production in kWh (mirrored from input sensor)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -628,12 +631,12 @@ class PVProductionSensor(BaseEntity):
 
 
 # =============================================================================
-# FINANZ-SENSOREN
+# FINANCIAL SENSORS
 # =============================================================================
 
 
 class SavingsSelfConsumptionSensor(BaseEntity):
-    """Ersparnis durch Eigenverbrauch (inkrementell berechnet)."""
+    """Savings from self consumption (incrementally calculated)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -661,7 +664,7 @@ class SavingsSelfConsumptionSensor(BaseEntity):
 
 
 class EarningsFeedInSensor(BaseEntity):
-    """Einnahmen durch Einspeisung (inkrementell berechnet)."""
+    """Earnings from feed-in (incrementally calculated)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -689,12 +692,12 @@ class EarningsFeedInSensor(BaseEntity):
 
 
 # =============================================================================
-# EFFIZIENZ-SENSOREN
+# EFFICIENCY SENSORS
 # =============================================================================
 
 
 class SelfConsumptionRatioSensor(BaseEntity):
-    """Eigenverbrauchsquote in Prozent."""
+    """Self consumption ratio in percent."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -713,12 +716,12 @@ class SelfConsumptionRatioSensor(BaseEntity):
     @property
     def extra_state_attributes(self):
         return {
-            "description": "Anteil der PV-Produktion der selbst verbraucht wird",
+            "description": "Share of PV production that is self consumed",
         }
 
 
 class AutarkyRateSensor(BaseEntity):
-    """Autarkiegrad in Prozent."""
+    """Autarky rate in percent."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -740,18 +743,18 @@ class AutarkyRateSensor(BaseEntity):
     @property
     def extra_state_attributes(self):
         return {
-            "description": "Anteil des Verbrauchs der durch PV gedeckt wird",
-            "hinweis": "Benötigt konfigurierten Verbrauchs-Sensor" if self.ctrl.autarky_rate is None else None,
+            "description": "Share of consumption covered by PV",
+            "note": "Requires configured consumption sensor" if self.ctrl.autarky_rate is None else None,
         }
 
 
 # =============================================================================
-# STATISTIK-SENSOREN
+# STATISTICS SENSORS
 # =============================================================================
 
 
 class AverageDailySavingsSensor(BaseEntity):
-    """Durchschnittliche tägliche Ersparnis."""
+    """Average daily savings."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -769,7 +772,7 @@ class AverageDailySavingsSensor(BaseEntity):
 
 
 class AverageMonthlySavingsSensor(BaseEntity):
-    """Durchschnittliche monatliche Ersparnis."""
+    """Average monthly savings."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -787,7 +790,7 @@ class AverageMonthlySavingsSensor(BaseEntity):
 
 
 class AverageYearlySavingsSensor(BaseEntity):
-    """Durchschnittliche jährliche Ersparnis."""
+    """Average yearly savings."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -805,7 +808,7 @@ class AverageYearlySavingsSensor(BaseEntity):
 
 
 class DaysSinceInstallationSensor(BaseEntity):
-    """Tage seit Installation."""
+    """Days since installation."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -823,12 +826,12 @@ class DaysSinceInstallationSensor(BaseEntity):
 
 
 # =============================================================================
-# PROGNOSE-SENSOREN
+# FORECAST SENSORS
 # =============================================================================
 
 
 class EstimatedRemainingDaysSensor(BaseEntity):
-    """Geschätzte verbleibende Tage bis Amortisation."""
+    """Estimated remaining days until amortisation."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -848,7 +851,7 @@ class EstimatedRemainingDaysSensor(BaseEntity):
     def extra_state_attributes(self):
         remaining = self.ctrl.estimated_remaining_days
         if remaining is None:
-            return {"status": "Berechnung nicht möglich"}
+            return {"status": "Calculation not possible"}
 
         years = remaining // 365
         months = (remaining % 365) // 30
@@ -856,11 +859,11 @@ class EstimatedRemainingDaysSensor(BaseEntity):
 
         parts = []
         if years > 0:
-            parts.append(f"{years} Jahr{'e' if years > 1 else ''}")
+            parts.append(f"{years} year{'s' if years > 1 else ''}")
         if months > 0:
-            parts.append(f"{months} Monat{'e' if months > 1 else ''}")
+            parts.append(f"{months} month{'s' if months > 1 else ''}")
         if days > 0 or not parts:
-            parts.append(f"{days} Tag{'e' if days != 1 else ''}")
+            parts.append(f"{days} day{'s' if days != 1 else ''}")
 
         return {
             "formatted": ", ".join(parts),
@@ -871,7 +874,7 @@ class EstimatedRemainingDaysSensor(BaseEntity):
 
 
 class EstimatedPaybackDateSensor(BaseEntity):
-    """Geschätztes Amortisationsdatum."""
+    """Estimated amortisation date."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -894,12 +897,12 @@ class EstimatedPaybackDateSensor(BaseEntity):
 
 
 # =============================================================================
-# UMWELT-SENSOREN
+# ENVIRONMENT SENSORS
 # =============================================================================
 
 
 class CO2SavedSensor(BaseEntity):
-    """Eingesparte CO2-Emissionen."""
+    """CO2 emissions saved."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -926,12 +929,12 @@ class CO2SavedSensor(BaseEntity):
 
 
 # =============================================================================
-# KONFIGURATIONS-SENSOREN (DIAGNOSE)
+# CONFIGURATION SENSORS (DIAGNOSTIC)
 # =============================================================================
 
 
 class CurrentElectricityPriceSensor(BaseEntity):
-    """Aktueller Strompreis."""
+    """Current electricity price."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -962,7 +965,7 @@ class CurrentElectricityPriceSensor(BaseEntity):
 
 
 class CurrentFeedInTariffSensor(BaseEntity):
-    """Aktuelle Einspeisevergütung."""
+    """Current feed-in tariff."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -994,7 +997,7 @@ class CurrentFeedInTariffSensor(BaseEntity):
 
 
 class InstallationCostSensor(BaseEntity):
-    """Anschaffungskosten der PV-Anlage."""
+    """Installation cost of the PV system."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1013,7 +1016,7 @@ class InstallationCostSensor(BaseEntity):
 
 
 class ConfigurationDiagnosticSensor(BaseEntity):
-    """Diagnose-Sensor zeigt alle konfigurierten Sensoren und deren Status."""
+    """Diagnostic sensor showing all configured sensors and their status."""
 
     def __init__(self, ctrl, name: str, entry: ConfigEntry):
         super().__init__(
@@ -1026,9 +1029,9 @@ class ConfigurationDiagnosticSensor(BaseEntity):
         self._entry = entry
 
     def _get_entity_status(self, entity_id: str | None) -> dict[str, Any]:
-        """Holt Status einer Entity."""
+        """Get status of an entity."""
         if not entity_id:
-            return {"configured": False, "entity_id": None, "state": None, "status": "nicht konfiguriert"}
+            return {"configured": False, "entity_id": None, "state": None, "status": "not configured"}
 
         state = self.hass.states.get(entity_id)
         if state is None:
@@ -1036,14 +1039,14 @@ class ConfigurationDiagnosticSensor(BaseEntity):
                 "configured": True,
                 "entity_id": entity_id,
                 "state": None,
-                "status": "nicht gefunden",
+                "status": "not found",
             }
         elif state.state in ("unavailable", "unknown"):
             return {
                 "configured": True,
                 "entity_id": entity_id,
                 "state": state.state,
-                "status": "nicht verfügbar",
+                "status": "unavailable",
             }
         else:
             return {
@@ -1055,10 +1058,10 @@ class ConfigurationDiagnosticSensor(BaseEntity):
 
     @property
     def native_value(self) -> str:
-        """Zeigt Gesamtstatus der Konfiguration."""
+        """Shows overall configuration status."""
         issues = 0
 
-        # Prüfe alle konfigurierten Sensoren
+        # Check all configured sensors
         entities_to_check = [
             self.ctrl.pv_production_entity,
             self.ctrl.grid_export_entity,
@@ -1073,11 +1076,11 @@ class ConfigurationDiagnosticSensor(BaseEntity):
         if issues == 0:
             return "OK"
         else:
-            return f"{issues} Problem{'e' if issues > 1 else ''}"
+            return f"{issues} issue{'s' if issues > 1 else ''}"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Zeigt alle konfigurierten Sensoren und deren Status."""
+        """Shows all configured sensors and their status."""
         pv_status = self._get_entity_status(self.ctrl.pv_production_entity)
         export_status = self._get_entity_status(self.ctrl.grid_export_entity)
         import_status = self._get_entity_status(self.ctrl.grid_import_entity)
@@ -1086,7 +1089,7 @@ class ConfigurationDiagnosticSensor(BaseEntity):
         tariff_status = self._get_entity_status(self.ctrl.feed_in_tariff_entity)
 
         return {
-            # === SENSOR-KONFIGURATION ===
+            # === SENSOR CONFIGURATION ===
             "pv_production_entity": pv_status["entity_id"],
             "pv_production_status": pv_status["status"],
             "pv_production_value": pv_status["state"],
@@ -1103,7 +1106,7 @@ class ConfigurationDiagnosticSensor(BaseEntity):
             "consumption_status": consumption_status["status"],
             "consumption_value": consumption_status["state"],
 
-            # Preissensoren (optional)
+            # Price sensors (optional)
             "electricity_price_entity": price_status["entity_id"],
             "electricity_price_status": price_status["status"],
             "electricity_price_value": price_status["state"],
@@ -1114,28 +1117,28 @@ class ConfigurationDiagnosticSensor(BaseEntity):
             "feed_in_tariff_value": tariff_status["state"],
             "feed_in_tariff_source": "sensor" if self.ctrl.feed_in_tariff_entity else "config",
 
-            # === AKKUMULIERTE WERTE (diese werden gespeichert) ===
+            # === ACCUMULATED VALUES (these are stored) ===
             "tracked_self_consumption_kwh": round(self.ctrl._total_self_consumption_kwh, 4),
             "tracked_feed_in_kwh": round(self.ctrl._total_feed_in_kwh, 4),
             "accumulated_savings_self_eur": round(self.ctrl._accumulated_savings_self, 4),
             "accumulated_earnings_feed_eur": round(self.ctrl._accumulated_earnings_feed, 4),
 
-            # === LETZTE SENSOR-WERTE (für Delta-Berechnung) ===
+            # === LAST SENSOR VALUES (for delta calculation) ===
             "last_pv_production_kwh": self.ctrl._last_pv_production_kwh,
             "last_grid_export_kwh": self.ctrl._last_grid_export_kwh,
 
-            # === AKTUELLE SENSOR-WERTE ===
+            # === CURRENT SENSOR VALUES ===
             "current_pv_production_kwh": round(self.ctrl._pv_production_kwh, 4),
             "current_grid_export_kwh": round(self.ctrl._grid_export_kwh, 4),
             "current_grid_import_kwh": round(self.ctrl._grid_import_kwh, 4),
             "current_consumption_kwh": round(self.ctrl._consumption_kwh, 4),
 
-            # === BERECHNETE WERTE ===
+            # === CALCULATED VALUES ===
             "total_self_consumption_kwh": round(self.ctrl.self_consumption_kwh, 4),
             "total_feed_in_kwh": round(self.ctrl.feed_in_kwh, 4),
             "total_savings_eur": round(self.ctrl.total_savings, 4),
 
-            # === PREISE ===
+            # === PRICES ===
             "current_electricity_price_eur": round(self.ctrl.current_electricity_price, 4),
             "current_feed_in_tariff_eur": round(self.ctrl.current_feed_in_tariff, 4),
 
@@ -1163,7 +1166,7 @@ class ConfigurationDiagnosticSensor(BaseEntity):
 
     @property
     def icon(self) -> str:
-        """Icon basierend auf Status."""
+        """Icon based on status."""
         if self.native_value == "OK":
             return "mdi:check-circle"
         else:
@@ -1171,16 +1174,16 @@ class ConfigurationDiagnosticSensor(BaseEntity):
 
 
 # =============================================================================
-# EMPFEHLUNGS-SENSOR (AMPEL)
+# RECOMMENDATION SENSOR (TRAFFIC LIGHT)
 # =============================================================================
 
 
 class ConsumptionRecommendationSensor(BaseEntity):
     """
-    Stromverbrauch-Empfehlung als Ampel.
+    Electricity consumption recommendation as traffic light.
 
-    Zeigt an, ob jetzt ein guter Zeitpunkt ist, Strom zu verbrauchen.
-    Basiert auf: PV-Leistung, Batterie, Strompreis, Tageszeit, Prognose.
+    Shows whether now is a good time to consume electricity.
+    Based on: PV power, battery, electricity price, time of day, forecast.
     """
 
     def __init__(self, ctrl, name: str):
@@ -1193,24 +1196,24 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
     @property
     def native_value(self) -> str:
-        """Zeigt Empfehlungstext."""
+        """Shows recommendation text."""
         return self.ctrl.consumption_recommendation_text
 
     @property
     def icon(self) -> str:
-        """Icon als Ampel-Farbe."""
+        """Icon as traffic light color."""
         rec = self.ctrl.consumption_recommendation
         if rec == RECOMMENDATION_DARK_GREEN:
-            return "mdi:checkbox-marked-circle-outline"  # Doppelter Haken
+            return "mdi:checkbox-marked-circle-outline"  # Double check mark
         elif rec == RECOMMENDATION_GREEN:
-            return "mdi:checkbox-marked-circle"  # Grüner Haken
+            return "mdi:checkbox-marked-circle"  # Green check mark
         elif rec == RECOMMENDATION_RED:
-            return "mdi:close-circle"  # Rotes X
+            return "mdi:close-circle"  # Red X
         else:
-            return "mdi:minus-circle"  # Gelber Strich
+            return "mdi:minus-circle"  # Yellow dash
 
     def _calculate_score_breakdown(self) -> dict[str, Any]:
-        """Berechnet detaillierte Score-Aufschlüsselung."""
+        """Calculate detailed score breakdown."""
         from datetime import datetime
 
         breakdown = {}
@@ -1218,7 +1221,7 @@ class ConsumptionRecommendationSensor(BaseEntity):
         reasons_positive = []
         reasons_negative = []
 
-        # === PV-Leistung (basierend auf Peak-Leistung, mit Winter-Grundlast-Abzug) ===
+        # === PV power (based on peak power, with winter base load deduction) ===
         pv_power_raw = self.ctrl.pv_power
         pv_power = self.ctrl.effective_pv_power  # Mit Winter-Grundlast-Abzug
         pv_peak = self.ctrl.pv_peak_power
@@ -1232,34 +1235,34 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
         if pv_power >= pv_very_high:
             pv_score = 4
-            reasons_positive.append("Sehr viel PV")
+            reasons_positive.append("Very high PV")
         elif pv_power >= pv_high:
             pv_score = 2
-            reasons_positive.append("Viel PV")
+            reasons_positive.append("High PV")
         elif pv_power >= pv_moderate:
             pv_score = 1
-            reasons_positive.append("Etwas PV")
+            reasons_positive.append("Some PV")
         elif pv_power < pv_low:
             pv_score = -1
-            reasons_negative.append("Kaum PV")
+            reasons_negative.append("Barely any PV")
         else:
             pv_score = 0
 
-        breakdown["pv_leistung"] = {
-            "wert": f"{pv_power_raw:.0f} W",
-            "effektiv": f"{pv_power:.0f} W" if is_winter and winter_base > 0 else None,
-            "winter_grundlast": f"{winter_base:.0f} W" if is_winter and winter_base > 0 else None,
-            "prozent": f"{pv_percent:.0f}%",
-            "peak_leistung": f"{pv_peak:.0f} W",
-            "schwelle_sehr_hoch": f"{pv_very_high:.0f} W (60%)",
-            "schwelle_hoch": f"{pv_high:.0f} W (30%)",
-            "schwelle_moderat": f"{pv_moderate:.0f} W (10%)",
-            "punkte": pv_score,
-            "bewertung": "++++" if pv_score >= 4 else "++" if pv_score >= 2 else "+" if pv_score >= 1 else "--" if pv_score < 0 else "o"
+        breakdown["pv_power"] = {
+            "value": f"{pv_power_raw:.0f} W",
+            "effective": f"{pv_power:.0f} W" if is_winter and winter_base > 0 else None,
+            "winter_base_load": f"{winter_base:.0f} W" if is_winter and winter_base > 0 else None,
+            "percent": f"{pv_percent:.0f}%",
+            "peak_power": f"{pv_peak:.0f} W",
+            "threshold_very_high": f"{pv_very_high:.0f} W (60%)",
+            "threshold_high": f"{pv_high:.0f} W (30%)",
+            "threshold_moderate": f"{pv_moderate:.0f} W (10%)",
+            "points": pv_score,
+            "rating": "++++" if pv_score >= 4 else "++" if pv_score >= 2 else "+" if pv_score >= 1 else "--" if pv_score < 0 else "o"
         }
         total_score += pv_score
 
-        # === Batterie ===
+        # === Battery ===
         if self.ctrl.battery_soc_entity:
             battery_soc = self.ctrl.battery_soc
             soc_high = self.ctrl.battery_soc_high
@@ -1267,97 +1270,97 @@ class ConsumptionRecommendationSensor(BaseEntity):
 
             if battery_soc >= soc_high:
                 bat_score = 2
-                reasons_positive.append(f"Batterie voll ({battery_soc:.0f}%)")
+                reasons_positive.append(f"Battery full ({battery_soc:.0f}%)")
             elif battery_soc <= soc_low:
                 bat_score = -2
-                reasons_negative.append(f"Batterie leer ({battery_soc:.0f}%)")
+                reasons_negative.append(f"Battery empty ({battery_soc:.0f}%)")
             else:
                 bat_score = 0
 
-            breakdown["batterie"] = {
-                "wert": f"{battery_soc:.0f}%",
-                "schwelle_voll": f"{soc_high:.0f}%",
-                "schwelle_leer": f"{soc_low:.0f}%",
-                "punkte": bat_score,
-                "bewertung": "++" if bat_score >= 2 else "--" if bat_score <= -2 else "o"
+            breakdown["battery"] = {
+                "value": f"{battery_soc:.0f}%",
+                "threshold_full": f"{soc_high:.0f}%",
+                "threshold_empty": f"{soc_low:.0f}%",
+                "points": bat_score,
+                "rating": "++" if bat_score >= 2 else "--" if bat_score <= -2 else "o"
             }
             total_score += bat_score
 
-        # === Strompreis (EPEX Quantile hat Priorität) ===
+        # === Electricity price (EPEX quantile has priority) ===
         if self.ctrl.epex_quantile_entity and 0 <= self.ctrl.epex_quantile <= 1:
             quantile = self.ctrl.epex_quantile
             epex_price = self.ctrl.epex_price
 
             if quantile <= 0.2:
                 price_score = 3
-                reasons_positive.append(f"EPEX Top 20% günstig (Q={quantile:.2f})")
+                reasons_positive.append(f"EPEX top 20% cheap (Q={quantile:.2f})")
             elif quantile <= 0.4:
                 price_score = 1
-                reasons_positive.append(f"EPEX günstig (Q={quantile:.2f})")
+                reasons_positive.append(f"EPEX cheap (Q={quantile:.2f})")
             elif quantile >= 0.8:
                 price_score = -3
-                reasons_negative.append(f"EPEX Top 20% teuer (Q={quantile:.2f})")
+                reasons_negative.append(f"EPEX top 20% expensive (Q={quantile:.2f})")
             elif quantile >= 0.6:
                 price_score = -1
-                reasons_negative.append(f"EPEX teuer (Q={quantile:.2f})")
+                reasons_negative.append(f"EPEX expensive (Q={quantile:.2f})")
             else:
                 price_score = 0
 
-            breakdown["strompreis"] = {
-                "wert": f"{epex_price:.4f} €/kWh",
-                "quelle": "EPEX Spot",
+            breakdown["electricity_price"] = {
+                "value": f"{epex_price:.4f} €/kWh",
+                "source": "EPEX Spot",
                 "quantile": f"{quantile:.2f}",
-                "quantile_erklaerung": "0=günstigster, 1=teuerster Preis des Tages",
-                "bewertung_bereich": "≤0.2: +++, ≤0.4: +, ≥0.6: -, ≥0.8: ---",
-                "punkte": price_score,
-                "bewertung": "+++" if price_score >= 3 else "++" if price_score >= 2 else "+" if price_score >= 1 else "---" if price_score <= -3 else "--" if price_score <= -2 else "-" if price_score <= -1 else "o"
+                "quantile_explanation": "0=cheapest, 1=most expensive price of the day",
+                "rating_range": "≤0.2: +++, ≤0.4: +, ≥0.6: -, ≥0.8: ---",
+                "points": price_score,
+                "rating": "+++" if price_score >= 3 else "++" if price_score >= 2 else "+" if price_score >= 1 else "---" if price_score <= -3 else "--" if price_score <= -2 else "-" if price_score <= -1 else "o"
             }
         else:
-            # Fallback: Absoluter Preis
+            # Fallback: Absolute price
             price = self.ctrl.current_electricity_price
             price_low = self.ctrl.price_low_threshold
             price_high = self.ctrl.price_high_threshold
 
             if price <= price_low:
                 price_score = 2
-                reasons_positive.append(f"Günstiger Strom ({price:.2f}€/kWh)")
+                reasons_positive.append(f"Cheap electricity ({price:.2f}€/kWh)")
             elif price >= price_high:
                 price_score = -2
-                reasons_negative.append(f"Teurer Strom ({price:.2f}€/kWh)")
+                reasons_negative.append(f"Expensive electricity ({price:.2f}€/kWh)")
             else:
                 price_score = 0
 
-            breakdown["strompreis"] = {
-                "wert": f"{price:.4f} €/kWh",
-                "quelle": self.ctrl.electricity_price_source,
-                "schwelle_guenstig": f"{price_low:.2f} €/kWh",
-                "schwelle_teuer": f"{price_high:.2f} €/kWh",
-                "punkte": price_score,
-                "bewertung": "++" if price_score >= 2 else "--" if price_score <= -2 else "o"
+            breakdown["electricity_price"] = {
+                "value": f"{price:.4f} €/kWh",
+                "source": self.ctrl.electricity_price_source,
+                "threshold_cheap": f"{price_low:.2f} €/kWh",
+                "threshold_expensive": f"{price_high:.2f} €/kWh",
+                "points": price_score,
+                "rating": "++" if price_score >= 2 else "--" if price_score <= -2 else "o"
             }
         total_score += price_score
 
-        # === Tageszeit ===
+        # === Time of day ===
         hour = datetime.now().hour
 
         if 10 <= hour <= 15:
             time_score = 1
-            reasons_positive.append(f"Gute Tageszeit ({hour}:00)")
+            reasons_positive.append(f"Good time of day ({hour}:00)")
         elif hour < 6 or hour > 21:
             time_score = -1
-            reasons_negative.append(f"Nachtzeit ({hour}:00)")
+            reasons_negative.append(f"Night time ({hour}:00)")
         else:
             time_score = 0
 
-        breakdown["tageszeit"] = {
-            "wert": f"{hour}:00 Uhr",
-            "kernzeit": "10:00 - 15:00",
-            "punkte": time_score,
-            "bewertung": "+" if time_score >= 1 else "-" if time_score <= -1 else "o"
+        breakdown["time_of_day"] = {
+            "value": f"{hour}:00",
+            "peak_hours": "10:00 - 15:00",
+            "points": time_score,
+            "rating": "+" if time_score >= 1 else "-" if time_score <= -1 else "o"
         }
         total_score += time_score
 
-        # === PV-Prognose (Solcast hat Priorität) ===
+        # === PV forecast (Solcast has priority) ===
         forecast_source = None
         forecast = 0.0
 
@@ -1371,141 +1374,141 @@ class ConsumptionRecommendationSensor(BaseEntity):
         if forecast_source and forecast > 0:
             if forecast >= 10:
                 forecast_score = 1
-                reasons_positive.append(f"Gute PV-Prognose ({forecast:.1f} kWh, {forecast_source})")
+                reasons_positive.append(f"Good PV forecast ({forecast:.1f} kWh, {forecast_source})")
             elif forecast < 3:
                 forecast_score = -1
-                reasons_negative.append(f"Schlechte PV-Prognose ({forecast:.1f} kWh, {forecast_source})")
+                reasons_negative.append(f"Poor PV forecast ({forecast:.1f} kWh, {forecast_source})")
             else:
                 forecast_score = 0
 
-            breakdown["pv_prognose"] = {
-                "wert": f"{forecast:.1f} kWh",
-                "quelle": forecast_source,
-                "schwelle_gut": "≥10 kWh",
-                "schwelle_schlecht": "<3 kWh",
-                "punkte": forecast_score,
-                "bewertung": "+" if forecast_score >= 1 else "-" if forecast_score <= -1 else "o"
+            breakdown["pv_forecast"] = {
+                "value": f"{forecast:.1f} kWh",
+                "source": forecast_source,
+                "threshold_good": "≥10 kWh",
+                "threshold_bad": "<3 kWh",
+                "points": forecast_score,
+                "rating": "+" if forecast_score >= 1 else "-" if forecast_score <= -1 else "o"
             }
             total_score += forecast_score
 
-        # === Zusammenfassung ===
+        # === Summary ===
         if total_score >= 5:
-            bereich = "dunkelgrün (≥5)"
+            bereich = "dark green (≥5)"
         elif total_score >= 3:
-            bereich = "grün (≥3)"
+            bereich = "green (≥3)"
         elif total_score <= -2:
-            bereich = "rot (≤-2)"
+            bereich = "red (≤-2)"
         else:
-            bereich = "gelb"
+            bereich = "yellow"
 
-        breakdown["gesamt"] = {
-            "punkte": total_score,
-            "bereich": bereich,
+        breakdown["total"] = {
+            "points": total_score,
+            "range": bereich,
         }
 
         return {
             "breakdown": breakdown,
-            "gruende_positiv": reasons_positive,
-            "gruende_negativ": reasons_negative,
+            "reasons_positive": reasons_positive,
+            "reasons_negative": reasons_negative,
             "total_score": total_score,
         }
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Detaillierte Infos zur Empfehlung mit Score-Aufschlüsselung."""
+        """Detailed recommendation info with score breakdown."""
         rec = self.ctrl.consumption_recommendation
         analysis = self._calculate_score_breakdown()
 
         attrs = {
-            # Hauptinfo
-            "ampel": rec,
-            "farbe": self.ctrl.consumption_recommendation_color,
-            "gesamt_score": analysis["total_score"],
-            "bewertung": self._get_score_explanation(analysis["total_score"]),
+            # Main info
+            "traffic_light": rec,
+            "color": self.ctrl.consumption_recommendation_color,
+            "total_score": analysis["total_score"],
+            "rating": self._get_score_explanation(analysis["total_score"]),
 
-            # === NEU: Für mehrzeilige Card-Anzeige ===
-            "status": self.ctrl.recommendation_status,  # "Ungünstig", "Guter Zeitpunkt", etc.
-            "gruende": self.ctrl.recommendation_reasons,  # Alle Gründe kombiniert
-            "tipp": self.ctrl.best_opportunity_text,  # Bester Tipp (PV oder Preis)
+            # === For multi-line card display ===
+            "status": self.ctrl.recommendation_status,  # "Unfavorable", "Good timing", etc.
+            "reasons": self.ctrl.recommendation_reasons,  # All reasons combined
+            "tip": self.ctrl.best_opportunity_text,  # Best tip (PV or price)
 
-            # === Separate Infos für flexible Card-Layouts ===
-            "pv_info": self.ctrl.pv_info,  # "kein PV", "kaum PV", "viel PV", etc.
-            "akku_info": self.ctrl.akku_info,  # "Akku voll", "Akku leer", oder leer
-            "preis_info": self.ctrl.preis_info,  # "Strom günstig", "Strom teuer", oder leer
-            "pv_tipp": self.ctrl.pv_tipp,  # "In 2h ca. 5 kW PV (12:00)" oder leer
-            "preis_tipp": self.ctrl.preis_tipp,  # "In 3h günstig (14:00, 12ct)"
+            # === Separate info for flexible card layouts ===
+            "pv_info": self.ctrl.pv_info,  # "no PV", "barely PV", "high PV", etc.
+            "battery_info": self.ctrl.akku_info,  # "Battery full", "Battery empty", or empty
+            "price_info": self.ctrl.preis_info,  # "Electricity cheap", "Electricity expensive", or empty
+            "pv_tip": self.ctrl.pv_tipp,  # "In 2h approx. 5 kW PV (12:00)" or empty
+            "price_tip": self.ctrl.preis_tipp,  # "In 3h cheap (14:00, 12ct)"
 
-            # Gründe (für einfache Anzeige)
-            "gruende_positiv": ", ".join(analysis["gruende_positiv"]) if analysis["gruende_positiv"] else "Keine",
-            "gruende_negativ": ", ".join(analysis["gruende_negativ"]) if analysis["gruende_negativ"] else "Keine",
+            # Reasons (for simple display)
+            "reasons_positive": ", ".join(analysis["reasons_positive"]) if analysis["reasons_positive"] else "None",
+            "reasons_negative": ", ".join(analysis["reasons_negative"]) if analysis["reasons_negative"] else "None",
 
-            # Detaillierte Aufschlüsselung
+            # Detailed breakdown
             "score_details": analysis["breakdown"],
 
-            # Konfiguration (zum Nachvollziehen)
+            # Configuration (for reference)
             "config": {
-                "pv_peak_leistung": f"{self.ctrl.pv_peak_power:.0f} W",
-                "pv_sehr_hoch": f"{self.ctrl.pv_peak_power * 0.6:.0f} W (60%)",
-                "pv_hoch": f"{self.ctrl.pv_peak_power * 0.3:.0f} W (30%)",
-                "preis_guenstig": f"{self.ctrl.price_low_threshold:.2f} €/kWh",
-                "preis_teuer": f"{self.ctrl.price_high_threshold:.2f} €/kWh",
-                "batterie_voll": f"{self.ctrl.battery_soc_high:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
-                "batterie_leer": f"{self.ctrl.battery_soc_low:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
+                "pv_peak_power": f"{self.ctrl.pv_peak_power:.0f} W",
+                "pv_very_high": f"{self.ctrl.pv_peak_power * 0.6:.0f} W (60%)",
+                "pv_high": f"{self.ctrl.pv_peak_power * 0.3:.0f} W (30%)",
+                "price_cheap": f"{self.ctrl.price_low_threshold:.2f} €/kWh",
+                "price_expensive": f"{self.ctrl.price_high_threshold:.2f} €/kWh",
+                "battery_full": f"{self.ctrl.battery_soc_high:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
+                "battery_empty": f"{self.ctrl.battery_soc_low:.0f}%" if self.ctrl.battery_soc_entity else "N/A",
             },
 
-            # Integration Status
-            "integrationen": {
+            # Integration status
+            "integrations": {
                 "epex_spot": self.ctrl.has_epex_integration,
                 "solcast": self.ctrl.has_solcast_integration,
             },
         }
 
-        # EPEX Spot Details wenn verfügbar
+        # EPEX Spot details when available
         if self.ctrl.has_epex_integration:
             attrs["epex_spot"] = {
-                "preis": f"{self.ctrl.epex_price:.4f} €/kWh" if self.ctrl.epex_price_entity else "N/A",
+                "price": f"{self.ctrl.epex_price:.4f} €/kWh" if self.ctrl.epex_price_entity else "N/A",
                 "quantile": f"{self.ctrl.epex_quantile:.2f}" if self.ctrl.epex_quantile_entity else "N/A",
-                "quantile_erklaerung": "0=günstigster, 1=teuerster Preis des Tages",
-                "prognose_eintraege": len(self.ctrl.epex_price_forecast),
+                "quantile_explanation": "0=cheapest, 1=most expensive price of the day",
+                "forecast_entries": len(self.ctrl.epex_price_forecast),
             }
 
-        # Solcast Details wenn verfügbar
+        # Solcast details when available
         if self.ctrl.has_solcast_integration:
             attrs["solcast"] = {
-                "prognose_heute": f"{self.ctrl.solcast_forecast_today:.1f} kWh",
-                "stunden_eintraege": len(self.ctrl.solcast_hourly_forecast),
+                "forecast_today": f"{self.ctrl.solcast_forecast_today:.1f} kWh",
+                "hourly_entries": len(self.ctrl.solcast_hourly_forecast),
             }
 
         return attrs
 
     def _get_score_explanation(self, score: int) -> str:
-        """Erklärt den Score."""
+        """Explains the score."""
         if score >= 6:
-            return "Perfekter Zeitpunkt!"
+            return "Perfect timing!"
         elif score >= 5:
-            return "Idealer Zeitpunkt!"
+            return "Ideal timing!"
         elif score >= 3:
-            return "Guter Zeitpunkt"
+            return "Good timing"
         elif score >= 1:
-            return "Akzeptabel"
+            return "Acceptable"
         elif score >= -1:
             return "Neutral"
         elif score >= -3:
-            return "Eher ungünstig"
+            return "Rather unfavorable"
         else:
-            return "Schlechter Zeitpunkt"
+            return "Bad timing"
 
     @property
     def available(self) -> bool:
-        """Sensor ist erst nach Datenwiederherstellung verfügbar."""
+        """Sensor is only available after data restoration."""
         return super().available
 
 
 class NextCheapHourSensor(BaseEntity):
     """
-    Zeigt die nächste günstige Stunde basierend auf EPEX Preisprognose.
+    Shows the next cheap hour based on EPEX price forecast.
 
-    Benötigt konfigurierte EPEX Spot Integration mit Preisprognose.
+    Requires configured EPEX Spot integration with price forecast.
     """
 
     def __init__(self, ctrl, name: str):
@@ -1519,12 +1522,12 @@ class NextCheapHourSensor(BaseEntity):
 
     @property
     def native_value(self) -> str:
-        """Zeigt wann die nächste günstige Stunde ist."""
+        """Shows when the next cheap hour is."""
         return self.ctrl.next_cheap_hour_text
 
     @property
     def icon(self) -> str:
-        """Icon basierend auf Verfügbarkeit."""
+        """Icon based on availability."""
         info = self.ctrl.next_cheap_hour
         if not info:
             return "mdi:clock-alert"
@@ -1537,7 +1540,7 @@ class NextCheapHourSensor(BaseEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Detaillierte Informationen zur Preisprognose."""
+        """Detailed price forecast information."""
         info = self.ctrl.next_cheap_hour
 
         attrs = {
@@ -1556,17 +1559,17 @@ class NextCheapHourSensor(BaseEntity):
 
     @property
     def available(self) -> bool:
-        """Sensor ist erst nach Datenwiederherstellung verfügbar."""
+        """Sensor is only available after data restoration."""
         return super().available
 
 
 # =============================================================================
-# STROMPREIS-DURCHSCHNITTS-SENSOREN
+# ELECTRICITY PRICE AVERAGE SENSORS
 # =============================================================================
 
 
 class DailyFeedInSensor(BaseEntity):
-    """Einspeisung heute: Vergütung und Menge."""
+    """Feed-in today: tariff and amount."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1587,13 +1590,13 @@ class DailyFeedInSensor(BaseEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "menge_kwh": round(self.ctrl.daily_feed_in_kwh, 2),
-            "vergütung_ct": f"{self.ctrl.current_feed_in_tariff * 100:.2f}",
+            "amount_kwh": round(self.ctrl.daily_feed_in_kwh, 2),
+            "tariff_ct": f"{self.ctrl.current_feed_in_tariff * 100:.2f}",
         }
 
 
 class DailyGridImportSensor(BaseEntity):
-    """Netzbezug heute: Kosten und Verbrauch."""
+    """Grid import today: cost and consumption."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1615,13 +1618,13 @@ class DailyGridImportSensor(BaseEntity):
     def extra_state_attributes(self) -> dict:
         avg = self.ctrl.daily_average_price_ct
         return {
-            "verbrauch_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
-            "durchschnitt_ct": round(avg, 2) if avg else None,
+            "consumption_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
+            "average_ct": round(avg, 2) if avg else None,
         }
 
 
 class DailyAveragePriceSensor(BaseEntity):
-    """Durchschnittlich bezahlter Strompreis heute in ct/kWh."""
+    """Average paid electricity price today in ct/kWh."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1643,7 +1646,7 @@ class DailyAveragePriceSensor(BaseEntity):
 
 
 class MonthlyAveragePriceSensor(BaseEntity):
-    """Durchschnittlich bezahlter Strompreis diesen Monat in ct/kWh."""
+    """Average paid electricity price this month in ct/kWh."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1666,10 +1669,10 @@ class MonthlyAveragePriceSensor(BaseEntity):
 
 class AverageElectricityPriceSensor(BaseEntity):
     """
-    Gesamter gewichteter Durchschnittsstrompreis in ct/kWh.
+    Overall weighted average electricity price in ct/kWh.
 
-    Zeigt den tatsächlich bezahlten Durchschnittspreis seit Tracking-Beginn.
-    Ideal zum Vergleich mit Fixpreis-Tarifen.
+    Shows the actual average price paid since tracking began.
+    Ideal for comparison with fixed-price tariffs.
     """
 
     def __init__(self, ctrl, name: str):
@@ -1694,15 +1697,15 @@ class AverageElectricityPriceSensor(BaseEntity):
     def extra_state_attributes(self) -> dict:
         avg_eur = self.ctrl.average_electricity_price
         return {
-            "verbrauch_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
-            "kosten_eur": round(self.ctrl.total_grid_import_cost, 2),
+            "consumption_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
+            "cost_eur": round(self.ctrl.total_grid_import_cost, 2),
             "average_eur_per_kwh": f"{avg_eur:.4f}" if avg_eur else None,
-            "beschreibung": "Gewichteter Durchschnitt seit Tracking-Beginn",
+            "description": "Weighted average since tracking began",
         }
 
 
 class DailyNetElectricityCostSensor(BaseEntity):
-    """Netto-Stromkosten heute: Netzbezug minus Einspeisung."""
+    """Net electricity cost today: grid import minus feed-in."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1723,13 +1726,13 @@ class DailyNetElectricityCostSensor(BaseEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "netzbezug_eur": round(self.ctrl.daily_grid_import_cost, 2),
-            "einspeisung_eur": round(self.ctrl.daily_feed_in_earnings, 2),
+            "grid_import_eur": round(self.ctrl.daily_grid_import_cost, 2),
+            "feed_in_eur": round(self.ctrl.daily_feed_in_earnings, 2),
         }
 
 
 class TotalGridImportCostSensor(BaseEntity):
-    """Gesamtkosten für Netzbezug in Euro."""
+    """Total grid import cost in Euro."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1751,18 +1754,18 @@ class TotalGridImportCostSensor(BaseEntity):
     def extra_state_attributes(self) -> dict:
         avg = self.ctrl.average_electricity_price_ct
         return {
-            "verbrauch_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
-            "durchschnittspreis_ct": f"{avg:.2f}" if avg else None,
+            "consumption_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
+            "average_price_ct": f"{avg:.2f}" if avg else None,
         }
 
 
 class SpotVsFixedPriceSensor(BaseEntity):
     """
-    Vergleich Spot-Tarif vs. konfiguriertem Fixpreis.
+    Comparison of spot tariff vs. configured fixed price.
 
-    Zeigt die Ersparnis/Mehrkosten in Euro:
-    - Positiv = Spot war günstiger als Fixpreis
-    - Negativ = Fixpreis wäre günstiger gewesen
+    Shows savings/additional cost in Euro:
+    - Positive = spot was cheaper than fixed price
+    - Negative = fixed price would have been cheaper
     """
 
     def __init__(self, ctrl, name: str):
@@ -1790,9 +1793,9 @@ class SpotVsFixedPriceSensor(BaseEntity):
         if savings is None:
             return "mdi:scale-balance"
         elif savings > 0:
-            return "mdi:thumb-up"  # Spot war günstiger
+            return "mdi:thumb-up"  # Spot was cheaper
         elif savings < 0:
-            return "mdi:thumb-down"  # Fixpreis wäre günstiger
+            return "mdi:thumb-down"  # Fixed price would have been cheaper
         return "mdi:scale-balance"
 
     @property
@@ -1803,36 +1806,36 @@ class SpotVsFixedPriceSensor(BaseEntity):
         kwh = self.ctrl.tracked_grid_import_kwh
 
         attrs = {
-            "fixpreis_ct": round(fixed, 2),
-            "spot_durchschnitt_ct": round(avg, 2) if avg else None,
-            "verbrauch_kwh": round(kwh, 2),
+            "fixed_price_ct": round(fixed, 2),
+            "spot_average_ct": round(avg, 2) if avg else None,
+            "consumption_kwh": round(kwh, 2),
         }
 
         if avg and fixed and kwh > 0:
-            # Was hätte Fixpreis gekostet?
+            # What would fixed price have cost?
             fixed_cost = kwh * (fixed / 100)
             spot_cost = self.ctrl.total_grid_import_cost
-            attrs["fixpreis_kosten_eur"] = round(fixed_cost, 2)
-            attrs["spot_kosten_eur"] = round(spot_cost, 2)
-            attrs["differenz_pro_kwh_ct"] = round(fixed - avg, 2) if avg else None
+            attrs["fixed_price_cost_eur"] = round(fixed_cost, 2)
+            attrs["spot_cost_eur"] = round(spot_cost, 2)
+            attrs["difference_per_kwh_ct"] = round(fixed - avg, 2) if avg else None
 
             if savings and savings > 0:
-                attrs["fazit"] = f"Spot {abs(savings):.2f}€ günstiger"
+                attrs["conclusion"] = f"Spot {abs(savings):.2f}€ cheaper"
             elif savings and savings < 0:
-                attrs["fazit"] = f"Fixpreis wäre {abs(savings):.2f}€ günstiger"
+                attrs["conclusion"] = f"Fixed price would be {abs(savings):.2f}€ cheaper"
             else:
-                attrs["fazit"] = "Etwa gleich"
+                attrs["conclusion"] = "About the same"
 
         return attrs
 
 
 # =============================================================================
-# AUTO-CHARGE BATTERIE-SENSOREN
+# AUTO-CHARGE BATTERY SENSORS
 # =============================================================================
 
 
 class AutoChargeReasonSensor(BaseEntity):
-    """Zeigt den Grund warum geladen/nicht geladen wird."""
+    """Shows the reason for charging/not charging."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1855,7 +1858,7 @@ class AutoChargeReasonSensor(BaseEntity):
 
 
 class AutoChargePriceDiffSensor(BaseEntity):
-    """Preisdifferenz zwischen billigster und teuerster Stunde heute."""
+    """Price difference between cheapest and most expensive hour today."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1878,14 +1881,14 @@ class AutoChargePriceDiffSensor(BaseEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "schwelle_ct": self.ctrl.auto_charge_min_price_diff,
-            "bedingung_erfuellt": self.ctrl._check_price_diff_condition(),
-            "beschreibung": f"Min. {self.ctrl.auto_charge_min_price_diff} ct nötig",
+            "threshold_ct": self.ctrl.auto_charge_min_price_diff,
+            "condition_met": self.ctrl._check_price_diff_condition(),
+            "description": f"Min. {self.ctrl.auto_charge_min_price_diff} ct required",
         }
 
 
 class AutoChargePVForecastSensor(BaseEntity):
-    """PV Prognose für heute (für Auto-Charge Entscheidung)."""
+    """PV forecast for today (for auto-charge decision)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1906,15 +1909,15 @@ class AutoChargePVForecastSensor(BaseEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "schwelle_kwh": self.ctrl.auto_charge_pv_threshold,
-            "bedingung_erfuellt": self.ctrl._check_pv_condition(),
-            "quelle": "Solcast" if self.ctrl.has_solcast_integration else "Manuell",
-            "beschreibung": f"Unter {self.ctrl.auto_charge_pv_threshold} kWh = laden",
+            "threshold_kwh": self.ctrl.auto_charge_pv_threshold,
+            "condition_met": self.ctrl._check_pv_condition(),
+            "source": "Solcast" if self.ctrl.has_solcast_integration else "Manual",
+            "description": f"Below {self.ctrl.auto_charge_pv_threshold} kWh = charge",
         }
 
 
 class AutoChargePriceQuantileSensor(BaseEntity):
-    """Aktuelles Preis-Quantile (0=billigste, 1=teuerste Stunde)."""
+    """Current price quantile (0=cheapest, 1=most expensive hour)."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1935,15 +1938,15 @@ class AutoChargePriceQuantileSensor(BaseEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "schwelle": self.ctrl.auto_charge_price_quantile,
-            "bedingung_erfuellt": self.ctrl._check_price_condition(),
-            "preis_ct": round(self.ctrl.current_electricity_price * 100, 1),
-            "beschreibung": f"0=billigste, 1=teuerste. Unter {self.ctrl.auto_charge_price_quantile} = günstig",
+            "threshold": self.ctrl.auto_charge_price_quantile,
+            "condition_met": self.ctrl._check_price_condition(),
+            "price_ct": round(self.ctrl.current_electricity_price * 100, 1),
+            "description": f"0=cheapest, 1=most expensive. Below {self.ctrl.auto_charge_price_quantile} = cheap",
         }
 
 
 class AutoChargeConditionsSensor(BaseEntity):
-    """Zeigt welche Bedingungen erfüllt sind."""
+    """Shows which conditions are met."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1956,7 +1959,7 @@ class AutoChargeConditionsSensor(BaseEntity):
 
     @property
     def native_value(self) -> str:
-        """Zeigt Anzahl erfüllter Bedingungen."""
+        """Shows number of fulfilled conditions."""
         conditions = [
             not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter,
             self.ctrl._check_pv_condition(),
@@ -1965,7 +1968,7 @@ class AutoChargeConditionsSensor(BaseEntity):
             self.ctrl._check_price_diff_condition(),
         ]
         fulfilled = sum(conditions)
-        return f"{fulfilled}/5 erfüllt"
+        return f"{fulfilled}/5 met"
 
     @property
     def icon(self) -> str:
@@ -1982,20 +1985,20 @@ class AutoChargeConditionsSensor(BaseEntity):
         diff_ok = self.ctrl._check_price_diff_condition()
 
         return {
-            "winter": "✓ Winter" if winter_ok else "✗ Sommer",
-            "pv_prognose": "✓ Niedrig" if pv_ok else "✗ Hoch",
-            "preis": "✓ Günstig" if price_ok else "✗ Teuer",
-            "batterie_soc": "✓ Niedrig" if soc_ok else "✗ Ausreichend",
-            "preisdifferenz": "✓ Groß" if diff_ok else "✗ Klein",
-            "alle_erfuellt": self.ctrl.should_auto_charge,
+            "winter": "✓ Winter" if winter_ok else "✗ Summer",
+            "pv_prognose": "✓ Low" if pv_ok else "✗ High",
+            "preis": "✓ Cheap" if price_ok else "✗ Expensive",
+            "batterie_soc": "✓ Low" if soc_ok else "✗ Sufficient",
+            "preisdifferenz": "✓ Large" if diff_ok else "✗ Small",
+            "all_met": self.ctrl.should_auto_charge,
         }
 
 
 class AutoChargeDiagnosticSensor(BaseEntity):
     """
-    Diagnose-Sensor für Auto-Charge.
+    Diagnostic sensor for auto-charge.
 
-    Zeigt alle relevanten Informationen warum geladen/nicht geladen wird.
+    Shows all relevant information about why charging/not charging.
     """
 
     def __init__(self, ctrl, name: str):
@@ -2010,14 +2013,14 @@ class AutoChargeDiagnosticSensor(BaseEntity):
 
     @property
     def native_value(self) -> str:
-        """Status-Text."""
+        """Status text."""
         if not self.ctrl.auto_charge_enabled:
-            return "Deaktiviert"
+            return "Disabled"
         if self.ctrl.auto_charge_winter_only and not self.ctrl.is_winter:
-            return "Pausiert (Sommer)"
+            return "Paused (summer)"
         if self.ctrl.should_auto_charge:
-            return "Laden empfohlen"
-        return "Kein Laden"
+            return "Charging recommended"
+        return "No charging"
 
     @property
     def icon(self) -> str:
@@ -2029,11 +2032,11 @@ class AutoChargeDiagnosticSensor(BaseEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Alle Diagnose-Informationen."""
+        """All diagnostic information."""
         forecast = self.ctrl.solcast_forecast_today if self.ctrl.has_solcast_integration else self.ctrl.pv_forecast
         price_diff = self.ctrl.epex_price_diff_today
 
-        # Berechne Ersparnis-Potenzial
+        # Calculate savings potential
         charge_cost = None
         potential_savings = None
         if price_diff and self.ctrl.auto_charge_power:
@@ -2041,7 +2044,7 @@ class AutoChargeDiagnosticSensor(BaseEntity):
             charge_cost = charge_kwh * self.ctrl.current_electricity_price
             potential_savings = charge_kwh * (price_diff / 100) * 0.85
 
-        # Bedingungen mit Erklärung
+        # Conditions with explanation
         def check_with_reason(name: str, current, threshold, condition_met: bool, compare: str = "<") -> dict:
             if compare == "<":
                 status = "✓" if condition_met else f"✗ ({current} >= {threshold})"
@@ -2050,88 +2053,88 @@ class AutoChargeDiagnosticSensor(BaseEntity):
             else:
                 status = "✓" if condition_met else f"✗ ({current} < {threshold})"
             return {
-                "erfuellt": condition_met,
-                "aktuell": current,
-                "schwelle": threshold,
+                "met": condition_met,
+                "current": current,
+                "threshold": threshold,
                 "status": status,
             }
 
         return {
-            # === HAUPT-STATUS ===
-            "empfehlung": "LADEN" if self.ctrl.should_auto_charge else "NICHT LADEN",
-            "grund": self.ctrl.auto_charge_reason,
+            # === MAIN STATUS ===
+            "recommendation": "CHARGE" if self.ctrl.should_auto_charge else "NO CHARGE",
+            "reason": self.ctrl.auto_charge_reason,
 
-            # === EINSTELLUNGEN ===
-            "einstellungen": {
-                "aktiviert": self.ctrl.auto_charge_enabled,
-                "nur_winter": self.ctrl.auto_charge_winter_only,
-                "pv_schwelle_kwh": self.ctrl.auto_charge_pv_threshold,
-                "preis_quantile_schwelle": self.ctrl.auto_charge_price_quantile,
-                "min_soc_prozent": self.ctrl.auto_charge_min_soc,
-                "ziel_soc_prozent": self.ctrl.auto_charge_target_soc,
-                "min_preisdiff_ct": self.ctrl.auto_charge_min_price_diff,
-                "ladeleistung_w": self.ctrl.auto_charge_power,
-            },
-
-            # === AKTUELLE WERTE ===
-            "aktuell": {
-                "ist_winter": self.ctrl.is_winter,
-                "pv_prognose_kwh": round(forecast, 1),
-                "preis_quantile": round(self.ctrl.epex_quantile, 2) if self.ctrl.has_epex_integration else None,
-                "preis_ct": round(self.ctrl.current_electricity_price * 100, 1),
-                "batterie_soc": round(self.ctrl.battery_soc, 0) if self.ctrl.battery_soc_entity else None,
-                "preisdifferenz_ct": price_diff,
+            # === SETTINGS ===
+            "settings": {
+                "enabled": self.ctrl.auto_charge_enabled,
+                "winter_only": self.ctrl.auto_charge_winter_only,
+                "pv_threshold_kwh": self.ctrl.auto_charge_pv_threshold,
+                "price_quantile_threshold": self.ctrl.auto_charge_price_quantile,
+                "min_soc_percent": self.ctrl.auto_charge_min_soc,
+                "target_soc_percent": self.ctrl.auto_charge_target_soc,
+                "min_price_diff_ct": self.ctrl.auto_charge_min_price_diff,
+                "charge_power_w": self.ctrl.auto_charge_power,
             },
 
-            # === BEDINGUNGEN (warum wird/wird nicht geladen) ===
-            "bedingung_winter": {
-                "erfuellt": not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter,
-                "nur_winter_aktiv": self.ctrl.auto_charge_winter_only,
-                "ist_winter": self.ctrl.is_winter,
-                "status": "✓" if (not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter) else "✗ (Sommer, nur Okt-März)",
-            },
-            "bedingung_pv": {
-                "erfuellt": self.ctrl._check_pv_condition(),
-                "aktuell_kwh": round(forecast, 1),
-                "schwelle_kwh": self.ctrl.auto_charge_pv_threshold,
-                "status": "✓" if self.ctrl._check_pv_condition() else f"✗ (Prognose {forecast:.1f} kWh zu hoch)",
-            },
-            "bedingung_preis": {
-                "erfuellt": self.ctrl._check_price_condition(),
-                "aktuell_quantile": round(self.ctrl.epex_quantile, 2) if self.ctrl.has_epex_integration else None,
-                "schwelle_quantile": self.ctrl.auto_charge_price_quantile,
-                "status": "✓" if self.ctrl._check_price_condition() else f"✗ (Quantile {self.ctrl.epex_quantile:.2f} zu hoch)",
-            },
-            "bedingung_soc": {
-                "erfuellt": self.ctrl._check_soc_condition(),
-                "aktuell_prozent": round(self.ctrl.battery_soc, 0) if self.ctrl.battery_soc_entity else None,
-                "schwelle_prozent": self.ctrl.auto_charge_min_soc,
-                "status": "✓" if self.ctrl._check_soc_condition() else f"✗ (SOC {self.ctrl.battery_soc:.0f}% bereits hoch genug)",
-            },
-            "bedingung_preisdiff": {
-                "erfuellt": self.ctrl._check_price_diff_condition(),
-                "aktuell_ct": price_diff,
-                "schwelle_ct": self.ctrl.auto_charge_min_price_diff,
-                "status": "✓" if self.ctrl._check_price_diff_condition() else f"✗ (Differenz {price_diff} ct zu gering)",
+            # === CURRENT VALUES ===
+            "current": {
+                "is_winter": self.ctrl.is_winter,
+                "pv_forecast_kwh": round(forecast, 1),
+                "price_quantile": round(self.ctrl.epex_quantile, 2) if self.ctrl.has_epex_integration else None,
+                "price_ct": round(self.ctrl.current_electricity_price * 100, 1),
+                "battery_soc": round(self.ctrl.battery_soc, 0) if self.ctrl.battery_soc_entity else None,
+                "price_diff_ct": price_diff,
             },
 
-            # === KOSTEN/ERSPARNIS ===
-            "kostenrechnung": {
-                "ladeleistung_kw": self.ctrl.auto_charge_power / 1000,
-                "aktueller_preis_ct": round(self.ctrl.current_electricity_price * 100, 1),
-                "kosten_1h_eur": round(charge_cost, 2) if charge_cost else None,
-                "ersparnis_1h_eur": round(potential_savings, 2) if potential_savings else None,
-                "effizienz_annahme": "85%",
+            # === CONDITIONS (why charging/not charging) ===
+            "condition_winter": {
+                "met": not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter,
+                "winter_only_active": self.ctrl.auto_charge_winter_only,
+                "is_winter": self.ctrl.is_winter,
+                "status": "✓" if (not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter) else "✗ (Summer, Oct-Mar only)",
+            },
+            "condition_pv": {
+                "met": self.ctrl._check_pv_condition(),
+                "current_kwh": round(forecast, 1),
+                "threshold_kwh": self.ctrl.auto_charge_pv_threshold,
+                "status": "✓" if self.ctrl._check_pv_condition() else f"✗ (Forecast {forecast:.1f} kWh too high)",
+            },
+            "condition_price": {
+                "met": self.ctrl._check_price_condition(),
+                "current_quantile": round(self.ctrl.epex_quantile, 2) if self.ctrl.has_epex_integration else None,
+                "threshold_quantile": self.ctrl.auto_charge_price_quantile,
+                "status": "✓" if self.ctrl._check_price_condition() else f"✗ (Quantile {self.ctrl.epex_quantile:.2f} too high)",
+            },
+            "condition_soc": {
+                "met": self.ctrl._check_soc_condition(),
+                "current_percent": round(self.ctrl.battery_soc, 0) if self.ctrl.battery_soc_entity else None,
+                "threshold_percent": self.ctrl.auto_charge_min_soc,
+                "status": "✓" if self.ctrl._check_soc_condition() else f"✗ (SOC {self.ctrl.battery_soc:.0f}% already high enough)",
+            },
+            "condition_price_diff": {
+                "met": self.ctrl._check_price_diff_condition(),
+                "current_ct": price_diff,
+                "threshold_ct": self.ctrl.auto_charge_min_price_diff,
+                "status": "✓" if self.ctrl._check_price_diff_condition() else f"✗ (Difference {price_diff} ct too low)",
             },
 
-            # === STATISTIKEN ===
-            "statistik": self.ctrl.auto_charge_stats,
+            # === COST/SAVINGS ===
+            "cost_calculation": {
+                "charge_power_kw": self.ctrl.auto_charge_power / 1000,
+                "current_price_ct": round(self.ctrl.current_electricity_price * 100, 1),
+                "cost_1h_eur": round(charge_cost, 2) if charge_cost else None,
+                "savings_1h_eur": round(potential_savings, 2) if potential_savings else None,
+                "efficiency_assumption": "85%",
+            },
+
+            # === STATISTICS ===
+            "statistics": self.ctrl.auto_charge_stats,
 
             # === INTEGRATION STATUS ===
-            "integrationen": {
+            "integrations": {
                 "epex_spot": self.ctrl.has_epex_integration,
                 "solcast": self.ctrl.has_solcast_integration,
-                "batterie_sensor": bool(self.ctrl.battery_soc_entity),
+                "battery_sensor": bool(self.ctrl.battery_soc_entity),
             },
         }
 
@@ -2271,10 +2274,10 @@ class BenchmarkScoreSensor(BaseEntity):
         sc_ratio = self.ctrl.self_consumption_ratio
         comparison = self.ctrl.benchmark_consumption_vs_avg
         return {
-            "autarkie_punkte": f"{min(35, autarky * 0.35):.1f}/35" if autarky is not None else "n/a",
-            "spez_ertrag_punkte": f"{min(25, (specific / 900) * 25):.1f}/25" if specific and specific > 0 else "n/a",
-            "eigenverbrauch_punkte": f"{min(20, sc_ratio * 0.2):.1f}/20" if sc_ratio is not None else "n/a",
-            "verbrauch_punkte": f"{max(0, min(20, 10 - comparison * 0.2)):.1f}/20" if comparison is not None else "n/a",
+            "autarky_points": f"{min(35, autarky * 0.35):.1f}/35" if autarky is not None else "n/a",
+            "specific_yield_points": f"{min(25, (specific / 900) * 25):.1f}/25" if specific and specific > 0 else "n/a",
+            "self_consumption_points": f"{min(20, sc_ratio * 0.2):.1f}/20" if sc_ratio is not None else "n/a",
+            "consumption_points": f"{max(0, min(20, 10 - comparison * 0.2)):.1f}/20" if comparison is not None else "n/a",
         }
 
     @property
@@ -2317,7 +2320,7 @@ class BenchmarkGridImportSensor(BaseEntity):
 
 
 class BenchmarkAnnualPVSensor(BaseEntity):
-    """Hochgerechnete PV-Jahresproduktion."""
+    """Extrapolated annual PV production."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(ctrl, name, "PV Produktion",
@@ -2334,7 +2337,7 @@ class BenchmarkAnnualPVSensor(BaseEntity):
 
 
 class BenchmarkSpecificYieldSensor(BaseEntity):
-    """Spezifischer Ertrag in kWh/kWp."""
+    """Specific yield in kWh/kWp."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(ctrl, name, "PV Ertrag",
