@@ -2881,6 +2881,11 @@ class PVManagementController:
                     self._total_feed_in_kwh,
                 )
 
+            # Always mark as restored so sensors become available
+            if not self._restored:
+                self._restored = True
+                self._notify_entities()
+
         # Warte 60 Sekunden bevor wir prüfen - Inverter-Integration braucht oft länger
         from homeassistant.helpers.event import async_call_later
         async_call_later(self.hass, 60.0, delayed_init_check)

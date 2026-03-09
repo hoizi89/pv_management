@@ -73,16 +73,16 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 # === ENERGIE-SENSOREN ===
                 vol.Required(CONF_PV_PRODUCTION_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
+                    selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
                 vol.Optional(CONF_GRID_EXPORT_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
+                    selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
                 vol.Optional(CONF_GRID_IMPORT_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
+                    selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
                 vol.Optional(CONF_CONSUMPTION_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
+                    selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
 
                 # === PREISE ===
@@ -134,7 +134,7 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_INSTALLATION_DATE): selector.DateSelector(),
 
                 # === AMORTISATION HELPER (Pflicht für Persistenz) ===
-                vol.Required(CONF_AMORTISATION_HELPER): selector.EntitySelector(
+                vol.Optional(CONF_AMORTISATION_HELPER): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="input_number")
                 ),
                 vol.Optional(CONF_RESTORE_FROM_HELPER, default=False): selector.BooleanSelector(),
@@ -165,14 +165,17 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             return self.config_entry.data[key]
         return default
 
-    def _optional_entity(self, key, domain="sensor"):
+    def _optional_entity(self, key, domain="sensor", device_class=None):
         """Returns a dict entry for an optional EntitySelector with safe default handling."""
+        config_kwargs = {"domain": domain}
+        if device_class is not None:
+            config_kwargs["device_class"] = device_class
         val = self._get_val(key)
         if val:
             return {vol.Optional(key, default=val): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain=domain))}
+                selector.EntitySelectorConfig(**config_kwargs))}
         return {vol.Optional(key): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=domain))}
+            selector.EntitySelectorConfig(**config_kwargs))}
 
     async def async_step_init(self, user_input=None):
         """Hauptmenü mit Kategorien."""
@@ -220,12 +223,12 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             step_id="sensors",
             data_schema=vol.Schema({
                 vol.Required(CONF_PV_PRODUCTION_ENTITY, default=self._get_val(CONF_PV_PRODUCTION_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                **self._optional_entity(CONF_GRID_EXPORT_ENTITY),
-                **self._optional_entity(CONF_GRID_IMPORT_ENTITY),
-                **self._optional_entity(CONF_CONSUMPTION_ENTITY),
-                **self._optional_entity(CONF_BATTERY_SOC_ENTITY),
-                **self._optional_entity(CONF_PV_POWER_ENTITY),
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="energy")),
+                **self._optional_entity(CONF_GRID_EXPORT_ENTITY, device_class="energy"),
+                **self._optional_entity(CONF_GRID_IMPORT_ENTITY, device_class="energy"),
+                **self._optional_entity(CONF_CONSUMPTION_ENTITY, device_class="energy"),
+                **self._optional_entity(CONF_BATTERY_SOC_ENTITY, device_class="battery"),
+                **self._optional_entity(CONF_PV_POWER_ENTITY, device_class="power"),
                 **self._optional_entity(CONF_PV_FORECAST_ENTITY),
             })
         )
@@ -254,7 +257,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=0.0, max=100.0, step=0.01, mode=selector.NumberSelectorMode.BOX)
                     ),
-                **self._optional_entity(CONF_ELECTRICITY_PRICE_ENTITY, "sensor"),
+                **self._optional_entity(CONF_ELECTRICITY_PRICE_ENTITY, domain=["sensor", "input_number"]),
 
                 # Einspeisevergütung
                 vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=self._get_val(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)):
@@ -271,7 +274,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.001, mode=selector.NumberSelectorMode.BOX)
                     ),
-                **self._optional_entity(CONF_FEED_IN_TARIFF_ENTITY, "sensor"),
+                **self._optional_entity(CONF_FEED_IN_TARIFF_ENTITY, domain=["sensor", "input_number"]),
 
                 # Fixpreis-Vergleich (für Spot vs. Fixpreis Berechnung)
                 vol.Optional(CONF_FIXED_PRICE_COMPARE, default=self._get_val(CONF_FIXED_PRICE_COMPARE, DEFAULT_FIXED_PRICE_COMPARE)):
@@ -478,7 +481,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Optional(CONF_BENCHMARK_HEATPUMP, default=self._get_val(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)):
                     selector.BooleanSelector(),
-                **self._optional_entity(CONF_BENCHMARK_HEATPUMP_ENTITY),
+                **self._optional_entity(CONF_BENCHMARK_HEATPUMP_ENTITY, device_class="energy"),
             })
         )
 
@@ -502,17 +505,17 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             entity_val = self._get_val(entity_key)
             if entity_val:
                 schema[vol.Optional(entity_key, default=entity_val)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor"))
+                    selector.EntitySelectorConfig(domain="sensor", device_class="energy"))
             else:
                 schema[vol.Optional(entity_key)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor"))
+                    selector.EntitySelectorConfig(domain="sensor", device_class="energy"))
             power_val = self._get_val(power_key)
             if power_val:
                 schema[vol.Optional(power_key, default=power_val)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor"))
+                    selector.EntitySelectorConfig(domain="sensor", device_class="power"))
             else:
                 schema[vol.Optional(power_key)] = selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor"))
+                    selector.EntitySelectorConfig(domain="sensor", device_class="power"))
             schema[vol.Optional(kwp_key, default=self._get_val(kwp_key, 0.0))] = selector.NumberSelector(
                 selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.01, unit_of_measurement="kWp", mode="box"))
 

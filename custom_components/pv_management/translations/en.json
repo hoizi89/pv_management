@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Set up PV Management",
-        "description": "Calculates amortisation and provides consumption recommendations.",
+        "description": "Basic setup only. After installation, go to Settings → Devices → PV Energy Management Spot for more features: Battery control, EPEX Spot, Energy benchmark, PV strings and more.",
         "data": {
           "name": "Name",
           "pv_production_entity": "PV Production Sensor (kWh)",
@@ -23,7 +23,9 @@
           "installation_date": "Installation Date (optional)",
           "savings_offset": "Already amortised (Offset)",
           "energy_offset_self_consumption": "Self consumption before tracking (kWh)",
-          "energy_offset_export": "Feed-in before tracking (kWh)"
+          "energy_offset_export": "Feed-in before tracking (kWh)",
+          "amortisation_helper": "Amortization Helper (input_number)",
+          "restore_from_helper": "Restore values from helper?"
         },
         "data_description": {
           "name": "Name for this PV system",
@@ -44,7 +46,9 @@
           "installation_date": "Installation date for accurate statistics",
           "savings_offset": "WARNING: Only use if no kWh offsets entered! Already amortised amount in Euro",
           "energy_offset_self_consumption": "WARNING: Only use if no Euro offset entered! Self consumption before tracking",
-          "energy_offset_export": "WARNING: Only use if no Euro offset entered! Feed-in before tracking"
+          "energy_offset_export": "WARNING: Only use if no Euro offset entered! Feed-in before tracking",
+          "amortisation_helper": "Optional but recommended! Create an input_number helper (Settings → Devices → Helpers → Number, Min: 0, Max: 999999). The helper backs up total savings independently — so data survives updates or reinstalls. Without helper everything works, but savings reset to 0 after reinstall.",
+          "restore_from_helper": "On next restart, restore savings from the helper value. Useful if you reinstall the integration but the helper still has the old value."
         }
       }
     },
@@ -59,7 +63,7 @@
     "step": {
       "init": {
         "title": "PV Management Settings",
-        "description": "Choose a category to configure.",
+        "description": "All features are here. Tip: Enable Battery, EPEX Spot, Benchmark and PV Strings for the full experience!",
         "menu_options": {
           "sensors": "Sensors",
           "prices": "Electricity Prices",
@@ -301,12 +305,12 @@
       "amort_kosten": { "name": "Installation Cost" },
       "konfiguration": { "name": "Configuration" },
       "verbrauchsempfehlung": { "name": "Consumption Recommendation" },
-      "nächste_günstige_stunde": { "name": "Next Cheap Hour" },
+      "naechste_guenstige_stunde": { "name": "Next Cheap Hour" },
       "tages_einspeisung": { "name": "Daily Feed-in" },
       "tages_netzbezug": { "name": "Daily Grid Import" },
-      "ø_strompreis_heute": { "name": "Avg. Electricity Price Today" },
-      "ø_strompreis_monat": { "name": "Avg. Electricity Price Month" },
-      "ø_strompreis_gesamt": { "name": "Avg. Electricity Price Total" },
+      "avg_strompreis_heute": { "name": "Avg. Electricity Price Today" },
+      "avg_strompreis_monat": { "name": "Avg. Electricity Price Month" },
+      "avg_strompreis_gesamt": { "name": "Avg. Electricity Price Total" },
       "tages_stromkosten": { "name": "Daily Electricity Cost" },
       "netzbezug_kosten": { "name": "Grid Import Cost" },
       "spot_vs_fixpreis": { "name": "Spot vs Fixed Price" },

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "PV Management einrichten",
-        "description": "Berechnet Amortisation und gibt Verbrauchsempfehlungen.",
+        "description": "Hier nur die Grundeinstellungen. Nach der Einrichtung findest du unter Einstellungen → Geraete → PV Energy Management Spot weitere Funktionen: Batterie-Steuerung, EPEX Spot, Energie-Benchmark, PV-Strings und mehr.",
         "data": {
           "name": "Name",
           "pv_production_entity": "PV Produktion Sensor (kWh)",
@@ -23,7 +23,9 @@
           "installation_date": "Installationsdatum (optional)",
           "epex_price_entity": "EPEX Spot Preis Sensor (optional)",
           "epex_quantile_entity": "EPEX Spot Quantile Sensor (optional)",
-          "solcast_forecast_entity": "Solcast Prognose Sensor (optional)"
+          "solcast_forecast_entity": "Solcast Prognose Sensor (optional)",
+          "amortisation_helper": "Amortisation Helper (input_number)",
+          "restore_from_helper": "Werte vom Helper wiederherstellen?"
         },
         "data_description": {
           "name": "Name fuer diese PV-Anlage",
@@ -44,7 +46,9 @@
           "installation_date": "Datum der Installation fuer genaue Statistiken",
           "epex_price_entity": "Fuer dynamische Strompreise (EPEX Spot Data Integration)",
           "epex_quantile_entity": "Zeigt wie guenstig der aktuelle Preis relativ zum Tag ist (0=guenstigster, 1=teuerster)",
-          "solcast_forecast_entity": "PV-Prognose fuer intelligente Verbrauchsempfehlungen"
+          "solcast_forecast_entity": "PV-Prognose fuer intelligente Verbrauchsempfehlungen",
+          "amortisation_helper": "Optional, aber empfohlen! Lege einen input_number Helfer an (Einstellungen → Geraete → Helfer → Zahl, Min: 0, Max: 999999). Der Helper sichert die Gesamtersparnis unabhaengig — so gehen Daten bei Updates oder Neuinstallation nicht verloren. Ohne Helper funktioniert alles, aber die Ersparnis startet nach Neuinstallation bei 0.",
+          "restore_from_helper": "Beim naechsten Start die Ersparnis vom Helper-Wert uebernehmen. Nuetzlich wenn du die Integration neu installierst aber der Helper noch den alten Wert hat."
         }
       }
     },
@@ -59,7 +63,7 @@
     "step": {
       "init": {
         "title": "PV Management Einstellungen",
-        "description": "Waehle eine Kategorie zum Bearbeiten:",
+        "description": "Hier findest du alle Funktionen. Tipp: Batterie, EPEX Spot, Benchmark und PV-Strings aktivieren fuer den vollen Funktionsumfang!",
         "menu_options": {
           "sensors": "Sensoren konfigurieren",
           "prices": "Strompreise & Amortisation",
@@ -293,12 +297,12 @@
       "amort_kosten": { "name": "Installation Cost" },
       "konfiguration": { "name": "Configuration" },
       "verbrauchsempfehlung": { "name": "Consumption Recommendation" },
-      "nächste_günstige_stunde": { "name": "Next Cheap Hour" },
+      "naechste_guenstige_stunde": { "name": "Next Cheap Hour" },
       "tages_einspeisung": { "name": "Daily Feed-in" },
       "tages_netzbezug": { "name": "Daily Grid Import" },
-      "ø_strompreis_heute": { "name": "Avg. Electricity Price Today" },
-      "ø_strompreis_monat": { "name": "Avg. Electricity Price Month" },
-      "ø_strompreis_gesamt": { "name": "Avg. Electricity Price Total" },
+      "avg_strompreis_heute": { "name": "Avg. Electricity Price Today" },
+      "avg_strompreis_monat": { "name": "Avg. Electricity Price Month" },
+      "avg_strompreis_gesamt": { "name": "Avg. Electricity Price Total" },
       "tages_stromkosten": { "name": "Daily Electricity Cost" },
       "netzbezug_kosten": { "name": "Grid Import Cost" },
       "spot_vs_fixpreis": { "name": "Spot vs Fixed Price" },

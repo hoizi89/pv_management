@@ -208,9 +208,13 @@ class BaseEntity(SensorEntity):
     ):
         self.ctrl = ctrl
         self._base_name = name
-        self._attr_translation_key = key.lower().replace(' ', '_').replace('/', '_')
+        raw_key = key.lower().replace(' ', '_').replace('/', '_')
+        # translation_key must be ASCII [a-z0-9-_] for hassfest
+        ascii_key = raw_key.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss').replace('ø', 'avg')
+        self._attr_translation_key = ascii_key
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
-        self._attr_unique_id = f"{DOMAIN}_{uid_name}_{key.lower().replace(' ', '_')}"
+        # unique_id keeps original key for backwards compatibility
+        self._attr_unique_id = f"{DOMAIN}_{uid_name}_{raw_key}"
         self._attr_native_unit_of_measurement = unit
         self._attr_icon = icon
         self._attr_state_class = state_class
