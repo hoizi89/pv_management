@@ -75,10 +75,10 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_PV_PRODUCTION_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
-                vol.Optional(CONF_GRID_EXPORT_ENTITY): selector.EntitySelector(
+                vol.Required(CONF_GRID_EXPORT_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
-                vol.Optional(CONF_GRID_IMPORT_ENTITY): selector.EntitySelector(
+                vol.Required(CONF_GRID_IMPORT_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", device_class="energy")
                 ),
                 vol.Optional(CONF_CONSUMPTION_ENTITY): selector.EntitySelector(
@@ -306,10 +306,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="helper",
             data_schema=vol.Schema({
-                vol.Required(CONF_AMORTISATION_HELPER, default=self._get_val(CONF_AMORTISATION_HELPER)):
-                    selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="input_number")
-                    ),
+                **self._optional_entity(CONF_AMORTISATION_HELPER, domain="input_number"),
                 vol.Optional(CONF_RESTORE_FROM_HELPER, default=self._get_val(CONF_RESTORE_FROM_HELPER, False)):
                     selector.BooleanSelector(),
             }),

@@ -96,15 +96,9 @@ async def async_setup_entry(
         EstimatedPaybackDateSensor(ctrl, name),
         EstimatedRemainingDaysSensor(ctrl, name),
 
-        # === ENERGY ===
-        SelfConsumptionSensor(ctrl, name),
-        FeedInSensor(ctrl, name),
+        # === ENERGY (ratio sensors always visible) ===
         SelfConsumptionRatioSensor(ctrl, name),
         AutarkyRateSensor(ctrl, name),
-
-        # === FINANCE ===
-        SavingsSelfConsumptionSensor(ctrl, name),
-        EarningsFeedInSensor(ctrl, name),
 
         # === STATISTICS ===
         AverageDailySavingsSensor(ctrl, name),
@@ -123,8 +117,6 @@ async def async_setup_entry(
         ConfigurationDiagnosticSensor(ctrl, name, entry),
 
         # === DAILY ELECTRICITY COSTS ===
-        DailyFeedInSensor(ctrl, name),
-        DailyGridImportSensor(ctrl, name),
         DailyNetElectricityCostSensor(ctrl, name),
 
         # === ELECTRICITY PRICE AVERAGE ===
@@ -142,6 +134,20 @@ async def async_setup_entry(
         AutoChargeConditionsSensor(ctrl, name),
         AutoChargeDiagnosticSensor(ctrl, name),
     ]
+
+    # === EXPORT-DEPENDENT SENSORS (only if grid export sensor configured) ===
+    if ctrl.grid_export_entity:
+        entities.extend([
+            SelfConsumptionSensor(ctrl, name),
+            FeedInSensor(ctrl, name),
+            SavingsSelfConsumptionSensor(ctrl, name),
+            EarningsFeedInSensor(ctrl, name),
+            DailyFeedInSensor(ctrl, name),
+        ])
+
+    # === GRID-IMPORT-DEPENDENT SENSORS ===
+    if ctrl.grid_import_entity:
+        entities.append(DailyGridImportSensor(ctrl, name))
 
     # === BENCHMARK (optional) ===
     if ctrl.benchmark_enabled:
