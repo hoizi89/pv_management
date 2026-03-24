@@ -171,10 +171,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         if device_class is not None:
             config_kwargs["device_class"] = device_class
         val = self._get_val(key)
-        if val:
-            return {vol.Optional(key, default=val): selector.EntitySelector(
-                selector.EntitySelectorConfig(**config_kwargs))}
-        return {vol.Optional(key): selector.EntitySelector(
+        schema_key = vol.Optional(key, description={"suggested_value": val}) if val else vol.Optional(key)
+        return {schema_key: selector.EntitySelector(
             selector.EntitySelectorConfig(**config_kwargs))}
 
     async def async_step_init(self, user_input=None):
