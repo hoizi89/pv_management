@@ -1240,38 +1240,21 @@ class PVManagementController:
 
     @property
     def self_consumption_ratio(self) -> float:
-        """Eigenverbrauchsquote (%)."""
-        if self._pv_production_kwh <= 0:
+        """Eigenverbrauchsquote (%) - Anteil der PV-Produktion der selbst verbraucht wird."""
+        total_pv = self._total_self_consumption_kwh + self._total_feed_in_kwh
+        if total_pv <= 0:
             return 0.0
-        current_self = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
-        return min(100.0, (current_self / self._pv_production_kwh) * 100)
+        return min(100.0, (self._total_self_consumption_kwh / total_pv) * 100)
 
     @property
     def autarky_rate(self) -> float | None:
-        """
-        Autarkiegrad (%) - Anteil des Verbrauchs der durch PV gedeckt wird.
-
-        Berechnung basiert auf SENSOR-TOTALS (nicht getrackten Werten):
-        - Eigenverbrauch = PV Produktion - Netzeinspeisung
-        - Mit Verbrauchs-Sensor: Eigenverbrauch / Verbrauch
-        - Ohne Verbrauchs-Sensor: Eigenverbrauch / (Eigenverbrauch + Netzbezug)
-        """
-        # Eigenverbrauch aus aktuellen Sensor-Werten berechnen
-        # (konsistent mit den anderen Sensor-Totals)
-        self_consumption = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
-
-        if self_consumption <= 0:
+        """Autarkiegrad (%) - Anteil des Verbrauchs der durch PV gedeckt wird."""
+        if self._total_self_consumption_kwh <= 0:
             return None
-
-        # Option 1: Verbrauchs-Sensor vorhanden
-        if self.consumption_entity and self._consumption_kwh > 0:
-            return min(100.0, (self_consumption / self._consumption_kwh) * 100)
-
-        # Option 2: Netzbezug-Sensor vorhanden
-        if self.grid_import_entity and self._grid_import_kwh > 0:
-            total_consumption = self_consumption + self._grid_import_kwh
-            if total_consumption > 0:
-                return min(100.0, (self_consumption / total_consumption) * 100)
+        total_consumption = self._total_self_consumption_kwh + self._tracked_grid_import_kwh
+        if total_consumption <= 0:
+            return None
+        return min(100.0, (self._total_self_consumption_kwh / total_consumption) * 100)
 
         # Keine Berechnung möglich
         return None
