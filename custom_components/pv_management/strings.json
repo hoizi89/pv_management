@@ -6,10 +6,10 @@
         "description": "Hier nur die Grundeinstellungen. Nach der Einrichtung findest du unter Einstellungen → Geraete → PV Energy Management Spot weitere Funktionen: Batterie-Steuerung, EPEX Spot, Energie-Benchmark, PV-Strings und mehr.",
         "data": {
           "name": "Name",
-          "pv_production_entity": "PV Produktion Sensor (kWh)",
-          "grid_export_entity": "Netzeinspeisung Sensor (kWh)",
-          "grid_import_entity": "Netzbezug Sensor (kWh)",
-          "consumption_entity": "Hausverbrauch Sensor (kWh, optional)",
+          "pv_production_entity": "PV Produktion Sensor (kWh/Wh)",
+          "grid_export_entity": "Netzeinspeisung Sensor (kWh/Wh)",
+          "grid_import_entity": "Netzbezug Sensor (kWh/Wh)",
+          "consumption_entity": "Hausverbrauch Sensor (kWh/Wh, optional)",
           "battery_soc_entity": "Batterie-Ladestand Sensor (%, optional)",
           "pv_power_entity": "PV-Leistung Sensor (W, optional)",
           "pv_forecast_entity": "PV-Prognose Sensor (kWh, optional)",
@@ -109,7 +109,8 @@
           "feed_in_tariff_entity": "Dynamische Einspeiseverguetung",
           "fixed_price_compare": "Fixpreis-Vergleich",
           "installation_cost": "Anschaffungskosten",
-          "installation_date": "Installationsdatum"
+          "installation_date": "Installationsdatum",
+          "yearly_cost": "Jaehrliche Kosten"
         },
         "data_description": {
           "electricity_price_unit": "Euro oder Cent pro kWh",
@@ -120,7 +121,8 @@
           "feed_in_tariff_entity": "Optional: Sensor fuer dynamische Verguetung",
           "fixed_price_compare": "Fixpreis zum Vergleich (z.B. Energie AG Angebot). Zeigt Ersparnis/Mehrkosten gegenueber Spot-Tarif.",
           "installation_cost": "Gesamtkosten der PV-Anlage in Euro",
-          "installation_date": "Fuer Statistiken und Prognosen"
+          "installation_date": "Fuer Statistiken und Prognosen",
+          "yearly_cost": "Jaehrliche Kosten wie Versicherung, Wartung etc. Werden bei der Amortisation beruecksichtigt."
         }
       },
       "integrations": {
@@ -207,13 +209,15 @@
           "benchmark_country": "Land",
           "benchmark_household_size": "Haushaltsgroesse (Personen)",
           "benchmark_heatpump": "Waermepumpe vorhanden",
-          "benchmark_heatpump_entity": "Waermepumpe Energie-Sensor (kWh)"
+          "benchmark_heatpump_entity": "Waermepumpe Energie-Sensor (kWh)",
+          "benchmark_heatpump_date": "Waermepumpe Inbetriebnahme"
         },
         "data_description": {
           "benchmark_country": "Referenzdaten: E-Control (AT), BDEW (DE), BFE (CH)",
           "benchmark_household_size": "Anzahl Personen im Haushalt",
           "benchmark_heatpump": "Wenn aktiv wird der WP-Verbrauch separat benchmarkt",
-          "benchmark_heatpump_entity": "Gesamt-kWh Zaehler der Waermepumpe (optional, fuer fairen Vergleich)"
+          "benchmark_heatpump_entity": "Gesamt-kWh Zaehler der Waermepumpe (optional, fuer fairen Vergleich)",
+          "benchmark_heatpump_date": "Datum der WP-Inbetriebnahme. Wenn gesetzt, wird der Gesamt-Sensorwert durch die Betriebstage geteilt fuer genaue Jahreswerte. Ohne Datum wird Delta-Tracking verwendet."
         }
       },
       "pv_strings": {

@@ -42,9 +42,10 @@ from .const import (
     RANGE_COST, RANGE_OFFSET, RANGE_BATTERY_SOC, RANGE_PV_POWER,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
     CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
-    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY,
+    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY, CONF_BENCHMARK_HEATPUMP_DATE,
     DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
     DEFAULT_BENCHMARK_HEATPUMP, RANGE_HOUSEHOLD_SIZE,
+    CONF_YEARLY_COST, DEFAULT_YEARLY_COST,
     CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY,
     CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY,
     CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY,
@@ -293,6 +294,15 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Optional(CONF_INSTALLATION_DATE, default=self._get_val(CONF_INSTALLATION_DATE)):
                     selector.DateSelector(),
+
+                # Jährliche Kosten (Versicherung, Wartung etc.)
+                vol.Optional(CONF_YEARLY_COST, default=self._get_val(CONF_YEARLY_COST, DEFAULT_YEARLY_COST)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0.0, max=5000.0, step=1.0,
+                            unit_of_measurement="€/Jahr", mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
             })
         )
 
@@ -477,6 +487,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_BENCHMARK_HEATPUMP, default=self._get_val(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)):
                     selector.BooleanSelector(),
                 **self._optional_entity(CONF_BENCHMARK_HEATPUMP_ENTITY, device_class="energy"),
+                vol.Optional(CONF_BENCHMARK_HEATPUMP_DATE, default=self._get_val(CONF_BENCHMARK_HEATPUMP_DATE)):
+                    selector.DateSelector(),
             })
         )
 

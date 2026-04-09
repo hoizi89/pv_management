@@ -107,6 +107,8 @@ DEFAULT_BATTERY_TARGET_SOC: Final[float] = 100.0  # % - target SOC for charging 
 # --- Amortisation Helper Sync -------------------------------------------------
 CONF_AMORTISATION_HELPER: Final[str] = "amortisation_helper"
 CONF_RESTORE_FROM_HELPER: Final[str] = "restore_from_helper"
+CONF_YEARLY_COST: Final[str] = "yearly_cost"
+DEFAULT_YEARLY_COST: Final[float] = 0.0  # €/Jahr (z.B. Versicherung, Wartung)
 
 # --- Fixed price comparison ---------------------------------------------------
 CONF_FIXED_PRICE_COMPARE: Final[str] = "fixed_price_compare"  # fixed price for comparison (ct/kWh)
@@ -154,6 +156,7 @@ CONF_BENCHMARK_HOUSEHOLD_SIZE: Final[str] = "benchmark_household_size"
 CONF_BENCHMARK_COUNTRY: Final[str] = "benchmark_country"
 CONF_BENCHMARK_HEATPUMP: Final[str] = "benchmark_heatpump"
 CONF_BENCHMARK_HEATPUMP_ENTITY: Final[str] = "benchmark_heatpump_entity"
+CONF_BENCHMARK_HEATPUMP_DATE: Final[str] = "benchmark_heatpump_date"
 
 DEFAULT_BENCHMARK_ENABLED: Final[bool] = False
 DEFAULT_BENCHMARK_HOUSEHOLD_SIZE: Final[int] = 3

@@ -29,6 +29,7 @@ from .const import (
     CONF_DISCHARGE_ENABLED, CONF_DISCHARGE_WINTER_ONLY, CONF_DISCHARGE_PRICE_QUANTILE,
     CONF_DISCHARGE_ALLOW_SOC, CONF_DISCHARGE_SUMMER_SOC,
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,  # NEU: Helper Sync
+    CONF_YEARLY_COST, DEFAULT_YEARLY_COST,  # NEU: Jährliche Kosten
     CONF_FIXED_PRICE_COMPARE,  # NEU: Fixpreis-Vergleich
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
@@ -46,7 +47,7 @@ from .const import (
     PRICE_UNIT_CENT,
     RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_ORANGE, RECOMMENDATION_RED,
     CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
-    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY,
+    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY, CONF_BENCHMARK_HEATPUMP_DATE,
     DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
     DEFAULT_BENCHMARK_HEATPUMP,
     BENCHMARK_CONSUMPTION, BENCHMARK_HEATPUMP_CONSUMPTION, BENCHMARK_CO2_FACTORS,
@@ -250,6 +251,9 @@ class PVManagementController:
         self.amortisation_helper = opts.get(CONF_AMORTISATION_HELPER)
         self.restore_from_helper = opts.get(CONF_RESTORE_FROM_HELPER, False)
 
+        # Jährliche Kosten (Versicherung, Wartung etc.)
+        self.yearly_cost = opts.get(CONF_YEARLY_COST, DEFAULT_YEARLY_COST)
+
         # Aliase für Rückwärtskompatibilität
         self.auto_charge_target_soc = self.battery_target_soc
         self.discharge_hold_soc = self.battery_target_soc
@@ -260,6 +264,7 @@ class PVManagementController:
         self.benchmark_country = opts.get(CONF_BENCHMARK_COUNTRY, DEFAULT_BENCHMARK_COUNTRY)
         self.benchmark_heatpump = opts.get(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)
         self.benchmark_heatpump_entity = opts.get(CONF_BENCHMARK_HEATPUMP_ENTITY)
+        self.benchmark_heatpump_date = opts.get(CONF_BENCHMARK_HEATPUMP_DATE)
 
         # PV-Strings
         self.pv_strings = []  # list of (name, energy_entity_id, power_entity_id_or_None)
@@ -290,6 +295,15 @@ class PVManagementController:
         if self.is_winter and self.winter_base_load > 0:
             pv = max(0, pv - self.winter_base_load)
         return pv
+
+    def _convert_energy_to_kwh(self, entity_id: str, value: float) -> float:
+        """Konvertiert Wh → kWh falls der Sensor in Wh meldet."""
+        state_obj = self.hass.states.get(entity_id)
+        if state_obj:
+            uom = state_obj.attributes.get("unit_of_measurement", "")
+            if uom in ("Wh", "wh"):
+                return value / 1000
+        return value
 
     def _convert_price_to_eur(self, price: float, unit: str, auto_detect: bool = False) -> float:
         """
@@ -1216,10 +1230,20 @@ class PVManagementController:
         return self._accumulated_earnings_feed
 
     @property
+    def total_yearly_costs(self) -> float:
+        """Kumulative jährliche Kosten seit Installation (Versicherung, Wartung etc.)."""
+        if self.yearly_cost <= 0:
+            return 0.0
+        days = self.days_since_installation
+        if days <= 0:
+            return 0.0
+        return self.yearly_cost * days / 365.0
+
+    @property
     def total_savings(self) -> float:
-        """Gesamtersparnis inkl. manuellem Offset."""
+        """Gesamtersparnis inkl. manuellem Offset, abzüglich jährlicher Kosten."""
         base = self.savings_self_consumption + self.earnings_feed_in
-        return base + self.savings_offset
+        return base + self.savings_offset - self.total_yearly_costs
 
     @property
     def amortisation_percent(self) -> float:
@@ -1311,15 +1335,38 @@ class PVManagementController:
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
-        """Own heat pump consumption (delta since first seen, extrapolated to 1 year)."""
+        """Own heat pump consumption extrapolated to 1 year.
+
+        Priority:
+        1. Rolling 12-month buckets (most accurate)
+        2. Configured WP date + total sensor value (for existing installations)
+        3. Delta tracking + extrapolation (fallback)
+        """
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
             return None
-        # Bucket-based
+        # Bucket-based (best accuracy when 12 months available)
         if len(self._monthly_buckets) >= 12:
             wp_total = sum(b.get("wp", 0.0) for b in self._monthly_buckets.values())
             if wp_total > 0:
                 return wp_total
-        # Fallback: extrapolation
+        # WP-Datum konfiguriert: Nutze aktuellen Sensorwert / Betriebstage
+        if self.benchmark_heatpump_date:
+            try:
+                if isinstance(self.benchmark_heatpump_date, str):
+                    wp_start = datetime.fromisoformat(self.benchmark_heatpump_date).date()
+                else:
+                    wp_start = self.benchmark_heatpump_date
+                wp_days = max(1, (date.today() - wp_start).days)
+                state = self.hass.states.get(self.benchmark_heatpump_entity)
+                if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                    total_kwh = self._convert_energy_to_kwh(
+                        self.benchmark_heatpump_entity, float(state.state)
+                    )
+                    if 0 < total_kwh < 500_000:
+                        return (total_kwh / wp_days) * 365
+            except (ValueError, TypeError):
+                pass
+        # Fallback: Delta-Tracking Extrapolation
         if self._wp_first_seen_date is None or self._tracked_wp_kwh <= 0:
             return None
         wp_days = max(1, (date.today() - self._wp_first_seen_date).days)
@@ -2624,18 +2671,18 @@ class PVManagementController:
         changed = False
         recommendation_changed = False
 
-        # Energie-Sensoren (für Amortisation)
+        # Energie-Sensoren (für Amortisation) — Wh→kWh Konvertierung
         if entity_id == self.pv_production_entity:
-            self._pv_production_kwh = value
+            self._pv_production_kwh = self._convert_energy_to_kwh(entity_id, value)
             changed = True
         elif entity_id == self.grid_export_entity:
-            self._grid_export_kwh = value
+            self._grid_export_kwh = self._convert_energy_to_kwh(entity_id, value)
             changed = True
         elif entity_id == self.grid_import_entity:
-            self._grid_import_kwh = value
+            self._grid_import_kwh = self._convert_energy_to_kwh(entity_id, value)
             changed = True  # Wichtig für Strompreis-Tracking!
         elif entity_id == self.consumption_entity:
-            self._consumption_kwh = value
+            self._consumption_kwh = self._convert_energy_to_kwh(entity_id, value)
 
         # Empfehlungs-Sensoren
         elif entity_id == self.battery_soc_entity:
@@ -2687,8 +2734,9 @@ class PVManagementController:
             self._last_wp_kwh = value
             self._notify_entities()
 
-        # PV-Strings (Delta-Tracking)
+        # PV-Strings (Delta-Tracking) — Wh→kWh Konvertierung
         elif entity_id in self._string_entity_ids:
+            value = self._convert_energy_to_kwh(entity_id, value)
             if self._string_first_seen_date is None:
                 self._string_first_seen_date = date.today()
             last = self._string_last_kwh.get(entity_id)
@@ -2713,7 +2761,7 @@ class PVManagementController:
 
     async def async_start(self) -> None:
         """Startet das Tracking."""
-        # Initiale Werte laden - Energie
+        # Initiale Werte laden - Energie (mit Wh→kWh Konvertierung)
         for entity_id, attr in [
             (self.pv_production_entity, "_pv_production_kwh"),
             (self.grid_export_entity, "_grid_export_kwh"),
@@ -2724,7 +2772,7 @@ class PVManagementController:
                 state = self.hass.states.get(entity_id)
                 if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                     try:
-                        setattr(self, attr, float(state.state))
+                        setattr(self, attr, self._convert_energy_to_kwh(entity_id, float(state.state)))
                     except (ValueError, TypeError):
                         pass
 
