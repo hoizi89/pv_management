@@ -73,6 +73,7 @@
           "advanced": "Advanced Settings",
           "benchmark": "Energy Benchmark",
           "pv_strings": "PV Strings",
+          "forecast": "Load Forecast",
           "reset": "Reset Data"
         }
       },
@@ -222,6 +223,24 @@
           "pv_string_4_kwp": "Installed nameplate capacity in kWp (optional)"
         }
       },
+      "forecast": {
+        "title": "Load Forecast",
+        "description": "Learns your hourly load pattern (24×7 matrix) from house consumption and provides forecasts for 1 h / 6 h / rest of today / tomorrow / 24 h. Ideal combined with EPEX price + Solcast. Fallbacks: <2 weeks → 7-day average, <3 days → persistence.",
+        "data": {
+          "forecast_enabled": "Enable load forecast",
+          "forecast_weeks": "History window",
+          "forecast_modal_drop": "Filter outlier days automatically",
+          "forecast_hp_entity": "Subtract heat pump (optional)",
+          "forecast_ev_entity": "Subtract EV charger (optional)"
+        },
+        "data_description": {
+          "forecast_enabled": "Creates 5 forecast sensors — pair with EPEX price and Solcast for charging logic",
+          "forecast_weeks": "More weeks = more stable profile. 4 weeks = sweet spot",
+          "forecast_modal_drop": "Drop the highest + lowest value per cell (recommended)",
+          "forecast_hp_entity": "HP total energy sensor (kWh) — subtracted from base load",
+          "forecast_ev_entity": "Wallbox total energy sensor (kWh) — subtracted from base load"
+        }
+      },
       "advanced": {
         "title": "Advanced Settings",
         "description": "Thresholds for the recommendation traffic light and PV system configuration.",
@@ -337,7 +356,12 @@
       "wp_verbrauch": { "name": "Heat Pump Consumption" },
       "wp_vergleich": { "name": "Heat Pump Comparison" },
       "gesamt_tagesproduktion": { "name": "Total Daily Production" },
-      "gesamt_peak": { "name": "Total Peak" }
+      "gesamt_peak": { "name": "Total Peak" },
+      "verbrauch_prognose_1h": { "name": "Load Forecast 1h" },
+      "verbrauch_prognose_6h": { "name": "Load Forecast 6h" },
+      "verbrauch_prognose_heute_rest": { "name": "Load Forecast Rest of Today" },
+      "verbrauch_prognose_morgen": { "name": "Load Forecast Tomorrow" },
+      "verbrauch_prognose_24h": { "name": "Load Forecast 24h" }
     }
   }
 }

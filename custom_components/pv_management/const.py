@@ -212,3 +212,19 @@ PV_STRING_CONFIGS = [
     (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_3_POWER, CONF_PV_STRING_3_KWP),
     (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY, CONF_PV_STRING_4_POWER, CONF_PV_STRING_4_KWP),
 ]
+
+# --- Load Forecast (24x7 hour-of-day x day-of-week profile) -------------------
+CONF_FORECAST_ENABLED: Final[str] = "forecast_enabled"
+CONF_FORECAST_WEEKS: Final[str] = "forecast_weeks"
+CONF_FORECAST_MODAL_DROP: Final[str] = "forecast_modal_drop"
+CONF_FORECAST_HP_ENTITY: Final[str] = "forecast_hp_entity"
+CONF_FORECAST_EV_ENTITY: Final[str] = "forecast_ev_entity"
+
+DEFAULT_FORECAST_ENABLED: Final[bool] = False
+DEFAULT_FORECAST_WEEKS: Final[int] = 4
+DEFAULT_FORECAST_MODAL_DROP: Final[bool] = True
+
+FORECAST_WEEKS_CHOICES: Final[tuple[int, ...]] = (2, 4, 6)
+FORECAST_REFRESH_SECONDS: Final[int] = 3600
+FORECAST_MIN_DAYS_FULL: Final[int] = 14
+FORECAST_MIN_DAYS_ANY: Final[int] = 3

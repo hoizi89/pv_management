@@ -31,6 +31,7 @@ DEVICE_BATTERY = "battery"
 DEVICE_PRICES = "prices"
 DEVICE_BENCHMARK = "benchmark"
 DEVICE_PV_STRINGS = "pv_strings"
+DEVICE_FORECAST = "forecast"
 
 
 def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
@@ -65,6 +66,14 @@ def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
             name=f"{name} PV Strings",
             manufacturer="Custom",
             model="PV Management - PV Strings",
+            via_device=(DOMAIN, name),
+        )
+    elif device_type == DEVICE_FORECAST:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{name}_forecast")},
+            name=f"{name} Load Forecast",
+            manufacturer="Custom",
+            model="PV Management - Load Forecast",
             via_device=(DOMAIN, name),
         )
     else:  # DEVICE_MAIN
@@ -170,6 +179,16 @@ async def async_setup_entry(
                 BenchmarkHeatpumpComparisonSensor(ctrl, name),
                 BenchmarkHouseholdSensor(ctrl, name),
             ])
+
+    # === LOAD FORECAST (optional, 24x7 profile) ===
+    if ctrl.forecast_enabled and ctrl.consumption_entity:
+        entities.extend([
+            LoadForecast1hSensor(ctrl, name),
+            LoadForecast6hSensor(ctrl, name),
+            LoadForecastTodayRestSensor(ctrl, name),
+            LoadForecastTomorrowSensor(ctrl, name),
+            LoadForecast24hSensor(ctrl, name),
+        ])
 
     # === PV STRINGS (optional) ===
     if ctrl.pv_strings:
@@ -2404,3 +2423,142 @@ class BenchmarkHeatpumpComparisonSensor(BaseEntity):
     def native_value(self):
         val = self.ctrl.benchmark_heatpump_vs_avg
         return round(val, 1) if val is not None else None
+
+
+# ---------------------------------------------------------------------------
+# LOAD FORECAST SENSORS (24x7 profile)
+# ---------------------------------------------------------------------------
+
+class _ForecastBaseSensor(BaseEntity):
+    """Basis für Load-Forecast Sensoren. Liest aus ctrl.forecaster."""
+
+    def __init__(self, ctrl, name: str, key: str, icon: str = "mdi:chart-bell-curve"):
+        super().__init__(
+            ctrl,
+            name,
+            key,
+            unit="kWh",
+            icon=icon,
+            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.ENERGY_STORAGE,
+            device_type=DEVICE_FORECAST,
+        )
+
+    @property
+    def available(self) -> bool:
+        return getattr(self.ctrl, "_restored", True) and self.ctrl.forecaster is not None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        fc = self.ctrl.forecaster
+        if fc is None:
+            return {}
+        attrs: dict[str, Any] = {
+            "method": fc.method,
+            "days_of_history": fc.days_of_history,
+            "base_load_only": fc.base_load_only,
+        }
+        if fc.last_update is not None:
+            attrs["last_update"] = fc.last_update.isoformat()
+        if fc.last_error:
+            attrs["last_error"] = fc.last_error
+        return attrs
+
+
+class LoadForecast1hSensor(_ForecastBaseSensor):
+    """Verbrauchsprognose nächste Stunde."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Verbrauch Prognose 1h", icon="mdi:clock-outline")
+
+    @property
+    def native_value(self) -> float | None:
+        fc = self.ctrl.forecaster
+        return fc.forecast_next_hours(1) if fc is not None else None
+
+
+class LoadForecast6hSensor(_ForecastBaseSensor):
+    """Verbrauchsprognose nächste 6 Stunden."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Verbrauch Prognose 6h", icon="mdi:clock-time-six-outline")
+
+    @property
+    def native_value(self) -> float | None:
+        fc = self.ctrl.forecaster
+        return fc.forecast_next_hours(6) if fc is not None else None
+
+
+class LoadForecastTodayRestSensor(_ForecastBaseSensor):
+    """Verbrauchsprognose Rest des heutigen Tages."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Verbrauch Prognose Heute Rest", icon="mdi:weather-sunset-down")
+
+    @property
+    def native_value(self) -> float | None:
+        fc = self.ctrl.forecaster
+        return fc.forecast_today_rest() if fc is not None else None
+
+
+class LoadForecastTomorrowSensor(_ForecastBaseSensor):
+    """Verbrauchsprognose morgen (00:00–23:00)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Verbrauch Prognose Morgen", icon="mdi:calendar-arrow-right")
+
+    @property
+    def native_value(self) -> float | None:
+        fc = self.ctrl.forecaster
+        return fc.forecast_tomorrow() if fc is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        attrs = super().extra_state_attributes
+        fc = self.ctrl.forecaster
+        if fc is None:
+            return attrs
+        try:
+            from datetime import timedelta
+            from homeassistant.util import dt as dt_util
+            start_tomorrow = (dt_util.as_local(dt_util.utcnow()) + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            attrs["forecast_hourly"] = fc.hourly_forecast(24, now=start_tomorrow)
+            low, high = fc.confidence_band(24, now=start_tomorrow)
+            if low is not None:
+                attrs["confidence_low"] = low
+            if high is not None:
+                attrs["confidence_high"] = high
+        except Exception:
+            pass
+        return attrs
+
+
+class LoadForecast24hSensor(_ForecastBaseSensor):
+    """Rollierende 24h-Prognose ab jetzt (für Batterie-/Lade-Logik)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Verbrauch Prognose 24h", icon="mdi:chart-bell-curve")
+
+    @property
+    def native_value(self) -> float | None:
+        fc = self.ctrl.forecaster
+        return fc.forecast_next_hours(24) if fc is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        attrs = super().extra_state_attributes
+        fc = self.ctrl.forecaster
+        if fc is None:
+            return attrs
+        try:
+            attrs["forecast_hourly"] = fc.hourly_forecast(24)
+            low, high = fc.confidence_band(24)
+            if low is not None:
+                attrs["confidence_low"] = low
+            if high is not None:
+                attrs["confidence_high"] = high
+        except Exception:
+            pass
+        return attrs

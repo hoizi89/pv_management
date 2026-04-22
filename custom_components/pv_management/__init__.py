@@ -52,6 +52,9 @@ from .const import (
     DEFAULT_BENCHMARK_HEATPUMP,
     BENCHMARK_CONSUMPTION, BENCHMARK_HEATPUMP_CONSUMPTION, BENCHMARK_CO2_FACTORS,
     PV_STRING_CONFIGS,
+    CONF_FORECAST_ENABLED, CONF_FORECAST_WEEKS, CONF_FORECAST_MODAL_DROP,
+    CONF_FORECAST_HP_ENTITY, CONF_FORECAST_EV_ENTITY,
+    DEFAULT_FORECAST_ENABLED, DEFAULT_FORECAST_WEEKS, DEFAULT_FORECAST_MODAL_DROP,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -175,6 +178,9 @@ class PVManagementController:
         self._remove_listeners = []
         self._entity_listeners = []
 
+        # Load Forecast (optional, 24x7 Profile)
+        self.forecaster = None  # LoadForecaster | None
+
     def _load_options(self):
         """Lädt Optionen aus Entry (Options überschreiben Data)."""
         opts = {**self.entry.data, **self.entry.options}
@@ -184,6 +190,13 @@ class PVManagementController:
         self.grid_export_entity = opts.get(CONF_GRID_EXPORT_ENTITY)
         self.grid_import_entity = opts.get(CONF_GRID_IMPORT_ENTITY)
         self.consumption_entity = opts.get(CONF_CONSUMPTION_ENTITY)
+
+        # Load Forecast
+        self.forecast_enabled = opts.get(CONF_FORECAST_ENABLED, DEFAULT_FORECAST_ENABLED)
+        self.forecast_weeks = opts.get(CONF_FORECAST_WEEKS, DEFAULT_FORECAST_WEEKS)
+        self.forecast_modal_drop = opts.get(CONF_FORECAST_MODAL_DROP, DEFAULT_FORECAST_MODAL_DROP)
+        self.forecast_hp_entity = opts.get(CONF_FORECAST_HP_ENTITY)
+        self.forecast_ev_entity = opts.get(CONF_FORECAST_EV_ENTITY)
 
         # Neue Entities für Empfehlungslogik
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
@@ -2929,6 +2942,29 @@ class PVManagementController:
             self.hass.bus.async_listen(EVENT_STATE_CHANGED, state_listener)
         )
 
+        # --- Load Forecast (24x7 profile) — nur wenn aktiviert + Verbrauchs-Entity da ist
+        if self.forecast_enabled and self.consumption_entity:
+            try:
+                from .forecast import LoadForecaster
+                self.forecaster = LoadForecaster(
+                    hass=self.hass,
+                    consumption_entity=self.consumption_entity,
+                    hp_entity=self.forecast_hp_entity,
+                    ev_entity=self.forecast_ev_entity,
+                    weeks=int(self.forecast_weeks),
+                    modal_drop=bool(self.forecast_modal_drop),
+                    on_update=self._notify_entities,
+                )
+                await self.forecaster.async_start()
+                _LOGGER.info(
+                    "LoadForecaster gestartet: weeks=%s modal_drop=%s hp=%s ev=%s",
+                    self.forecast_weeks, self.forecast_modal_drop,
+                    self.forecast_hp_entity, self.forecast_ev_entity,
+                )
+            except Exception as e:
+                _LOGGER.warning("LoadForecaster konnte nicht gestartet werden: %s", e)
+                self.forecaster = None
+
         self._notify_entities()
 
     async def async_stop(self) -> None:
@@ -2937,6 +2973,12 @@ class PVManagementController:
             remove()
         self._remove_listeners.clear()
         self._entity_listeners.clear()  # Alle Entity-Listener entfernen
+        if self.forecaster is not None:
+            try:
+                await self.forecaster.async_stop()
+            except Exception as e:
+                _LOGGER.debug("Forecaster-Stop Fehler (ignoriert): %s", e)
+            self.forecaster = None
 
     def set_options(self, **kwargs) -> None:
         """Setzt Optionen zur Laufzeit."""
@@ -3038,14 +3080,17 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
                 # Check if structural changes require reload
                 old_benchmark = ctrl.benchmark_enabled
                 old_heatpump = ctrl.benchmark_heatpump
+                old_forecast = ctrl.forecast_enabled
 
                 ctrl._load_options()
                 ctrl._notify_entities()
                 _LOGGER.info("PV Management Optionen aktualisiert")
 
-                # Reload if benchmark enabled/disabled or heatpump toggled
-                if ctrl.benchmark_enabled != old_benchmark or ctrl.benchmark_heatpump != old_heatpump:
-                    _LOGGER.info("Benchmark config changed, reloading integration")
+                # Reload if benchmark enabled/disabled, heatpump toggled, or forecast toggled
+                if (ctrl.benchmark_enabled != old_benchmark
+                        or ctrl.benchmark_heatpump != old_heatpump
+                        or ctrl.forecast_enabled != old_forecast):
+                    _LOGGER.info("Strukturelle Änderung (Benchmark/Forecast), reloading integration")
                     await hass.config_entries.async_reload(entry.entry_id)
     except Exception as e:
         _LOGGER.error("Fehler beim Aktualisieren der Optionen: %s", e)

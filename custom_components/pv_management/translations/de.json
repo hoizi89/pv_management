@@ -55,7 +55,8 @@
           "battery": "Batterie-Steuerung",
           "advanced": "Erweiterte Einstellungen",
           "benchmark": "Energie-Benchmark",
-          "pv_strings": "PV-Strings"
+          "pv_strings": "PV-Strings",
+          "forecast": "Lastvorhersage"
         }
       },
       "sensors": {
@@ -211,6 +212,24 @@
           "pv_string_4_kwp": "Installierte Nennleistung in kWp (optional)"
         }
       },
+      "forecast": {
+        "title": "Lastvorhersage",
+        "description": "Lernt dein Stundenprofil (24×7 Matrix) aus dem Hausverbrauch und liefert Prognosen für 1 h / 6 h / Rest heute / morgen / 24 h. Fallback: <2 Wochen → 7-Tage-Mittel, <3 Tage → Persistenz.",
+        "data": {
+          "forecast_enabled": "Lastvorhersage aktivieren",
+          "forecast_weeks": "Datenbasis",
+          "forecast_modal_drop": "Ausreißer-Tage automatisch filtern",
+          "forecast_hp_entity": "Wärmepumpe abziehen (optional)",
+          "forecast_ev_entity": "E-Auto abziehen (optional)"
+        },
+        "data_description": {
+          "forecast_enabled": "Erzeugt 5 Prognose-Sensoren — ideal in Kombination mit EPEX-Preis und Solcast",
+          "forecast_weeks": "Je mehr Wochen, desto stabiler das Profil. 4 Wochen = Sweet Spot",
+          "forecast_modal_drop": "Pro Zelle je höchsten + niedrigsten Wert verwerfen (empfohlen)",
+          "forecast_hp_entity": "WP-Gesamtzähler (kWh) — wird von der Basislast abgezogen",
+          "forecast_ev_entity": "Wallbox-Gesamtzähler (kWh) — wird von der Basislast abgezogen"
+        }
+      },
       "advanced": {
         "title": "Erweiterte Einstellungen",
         "description": "Schwellwerte fuer die Empfehlungs-Ampel und PV-Anlagen-Konfiguration.",
@@ -300,7 +319,12 @@
       "wp_verbrauch": { "name": "WP Verbrauch" },
       "wp_vergleich": { "name": "WP Vergleich" },
       "gesamt_tagesproduktion": { "name": "Gesamt Tagesproduktion" },
-      "gesamt_peak": { "name": "Gesamt Peak" }
+      "gesamt_peak": { "name": "Gesamt Peak" },
+      "verbrauch_prognose_1h": { "name": "Verbrauch Prognose 1h" },
+      "verbrauch_prognose_6h": { "name": "Verbrauch Prognose 6h" },
+      "verbrauch_prognose_heute_rest": { "name": "Verbrauch Prognose Heute Rest" },
+      "verbrauch_prognose_morgen": { "name": "Verbrauch Prognose Morgen" },
+      "verbrauch_prognose_24h": { "name": "Verbrauch Prognose 24h" }
     }
   }
 }

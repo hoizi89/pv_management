@@ -54,6 +54,10 @@ from .const import (
     CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER,
     CONF_PV_STRING_1_KWP, CONF_PV_STRING_2_KWP,
     CONF_PV_STRING_3_KWP, CONF_PV_STRING_4_KWP,
+    CONF_FORECAST_ENABLED, CONF_FORECAST_WEEKS, CONF_FORECAST_MODAL_DROP,
+    CONF_FORECAST_HP_ENTITY, CONF_FORECAST_EV_ENTITY,
+    DEFAULT_FORECAST_ENABLED, DEFAULT_FORECAST_WEEKS, DEFAULT_FORECAST_MODAL_DROP,
+    FORECAST_WEEKS_CHOICES,
 )
 
 
@@ -189,6 +193,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 "advanced": "Erweiterte Einstellungen",
                 "benchmark": "Energie-Benchmark",
                 "pv_strings": "PV-Strings",
+                "forecast": "Lastvorhersage",
                 "reset": "Zurücksetzen",
             },
         )
@@ -529,6 +534,52 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="pv_strings",
             data_schema=vol.Schema(schema)
+        )
+
+    async def async_step_forecast(self, user_input=None):
+        """Lastvorhersage (24×7 Profile) konfigurieren."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(
+                user_input,
+                optional_entity_keys=(CONF_FORECAST_HP_ENTITY, CONF_FORECAST_EV_ENTITY),
+            )
+
+        schema = {
+            vol.Required(
+                CONF_FORECAST_ENABLED,
+                default=self._get_val(CONF_FORECAST_ENABLED, DEFAULT_FORECAST_ENABLED),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_FORECAST_WEEKS,
+                default=str(self._get_val(CONF_FORECAST_WEEKS, DEFAULT_FORECAST_WEEKS)),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value=str(w), label=f"{w} Wochen")
+                        for w in FORECAST_WEEKS_CHOICES
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_FORECAST_MODAL_DROP,
+                default=self._get_val(CONF_FORECAST_MODAL_DROP, DEFAULT_FORECAST_MODAL_DROP),
+            ): selector.BooleanSelector(),
+        }
+        schema.update(self._optional_entity(CONF_FORECAST_HP_ENTITY, device_class="energy"))
+        schema.update(self._optional_entity(CONF_FORECAST_EV_ENTITY, device_class="energy"))
+
+        return self.async_show_form(
+            step_id="forecast",
+            data_schema=vol.Schema(schema),
+            description_placeholders={
+                "info": (
+                    "Die Lastvorhersage lernt dein Stundenprofil nach Wochentag und liefert "
+                    "Verbrauchsprognosen für 1h / 6h / Rest heute / morgen / 24h. "
+                    "Kombiniert mit EPEX-Preis und PV-Forecast ergibt das die Basis für "
+                    "dynamische Lade-/Entlade-Entscheidungen."
+                )
+            },
         )
 
     async def async_step_reset(self, user_input=None):

@@ -22,7 +22,88 @@
 | **EPEX Spot** | Integrates current market prices and quantiles |
 | **Solcast** | Considers PV forecast for smart decisions |
 | **PV-Strings** | Compare up to 4 PV strings — production, peak power, efficiency (kWh/kWp) |
+| **Load Forecast** *(v4.0)* | 24×7 hour-of-day × day-of-week profile — predicts 1 h / 6 h / today / tomorrow / 24 h consumption |
 | **Notifications** | Milestones, monthly summaries, custom automations |
+
+---
+
+## New in v4.0.0: Load Forecast (24×7 Profile) 🆕
+
+The missing piece for truly smart charging. Until now the Auto-Charge logic used a **fixed PV threshold** —
+helpful, but blind to how much electricity you'll actually need tomorrow. With v4.0 the integration
+**learns your consumption pattern** and exposes it as 5 new sensors so you (or the logic) can decide
+"charge from the grid tonight, or will PV tomorrow be enough?".
+
+### How it works
+
+1. **Data source**: your `consumption_entity`, pulled hourly from HA's built-in
+   `recorder.statistics_during_period` API — no external service, no ML training, no containers.
+2. **24×7 matrix**: for every `(hour-of-day, weekday)` cell the integration keeps a rolling
+   2 / 4 / 6-week window and averages it. Monday 07:00 ≠ Saturday 07:00, and the forecast reflects that.
+3. **Modal-drop** (on by default): the highest and lowest value per cell are thrown away before
+   averaging — cleans out holidays, outages, one-off EV sessions.
+4. **Optional subtraction** of heat-pump / EV energy sensors → clean base-load forecast.
+5. **Graceful fallbacks**: <14 days → 7-day rolling mean. <3 days → persistence ("this hour last week").
+   No history → sensors are `unavailable` instead of crashing.
+
+Typical accuracy (MAPE) for residential loads at 24 h horizon: **18–30%**. Same class as Predbat / EMHASS
+internals, zero setup.
+
+### The 5 new sensors
+
+| Sensor | Returns | Typical use |
+|---|---|---|
+| `sensor.*_verbrauch_prognose_1h` | kWh expected next hour | Short-term dispatch |
+| `sensor.*_verbrauch_prognose_6h` | kWh over the next 6 h | Evening peak window |
+| `sensor.*_verbrauch_prognose_heute_rest` | kWh from now until midnight | Rest-of-today budget |
+| `sensor.*_verbrauch_prognose_morgen` | kWh tomorrow (00:00 – 23:00) | Overnight charge decision |
+| `sensor.*_verbrauch_prognose_24h` | rolling 24 h from now | Main signal for charge logic |
+
+The **Morgen** and **24h** sensors also carry a `forecast_hourly` attribute (list of 24 values), plus
+`confidence_low` / `confidence_high` (±1σ over the history window) — ready for ApexCharts and safety margins.
+
+### Pairing with Auto-Charge
+
+Until a first-class "dynamic threshold" option lands, use the forecast sensor to shape your existing
+Auto-Charge input via a template. Example (charge only if tomorrow's expected consumption exceeds expected solar):
+
+```yaml
+template:
+  - binary_sensor:
+      - name: "Battery should grid-charge tonight"
+        state: >
+          {% set load = states('sensor.pv_fixpreis_verbrauch_prognose_morgen') | float(0) %}
+          {% set solar = state_attr('sensor.solcast_pv_forecast_forecast_tomorrow','total_kwh') | float(0) %}
+          {{ (load - solar) > 5 }}
+```
+
+Plug that binary sensor into your Auto-Charge automation in place of the static PV-threshold check.
+
+### How to enable
+
+`Settings → Devices → PV Management Spot → Configure → Load Forecast`
+
+1. Toggle **Enable load forecast** on.
+2. Pick **History window** — 4 weeks is the sweet spot.
+3. Leave **Filter outlier days** on unless you know why not.
+4. Optionally point **Heat pump** / **EV charger** to the respective total-energy sensors.
+
+The forecaster rebuilds once per hour in the background — never blocks the event loop.
+
+### Attributes
+
+```yaml
+method: 24x7_profile        # or fallback_7d_mean / fallback_persistence / warming_up
+days_of_history: 28
+base_load_only: true
+last_update: '2026-04-22T07:00:00+00:00'
+forecast_hourly: [0.25, 0.23, ..., 1.1]  # 24 values (Morgen/24h only)
+confidence_low: 18.4
+confidence_high: 23.1
+```
+
+> Planned: a built-in binary-sensor combining this forecast with Solcast + EPEX to replace the manual
+> template above. For v4.0 the building blocks are exposed — you wire them up.
 
 ---
 
