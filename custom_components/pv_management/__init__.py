@@ -2567,6 +2567,99 @@ class PVManagementController:
         except Exception as e:
             _LOGGER.debug("Konnte Solcast Prognose nicht laden: %s", e)
 
+    @callback
+    def _sync_forecast_sensors(self, _now=None) -> None:
+        """
+        Backup-Polling für Forecast-Sensoren.
+
+        Liest periodisch den aktuellen State von Solcast / EPEX / PV-Forecast
+        Entities aus dem HA-State-Bus und syncht unsere internen Werte.
+
+        Hintergrund: Der EVENT_STATE_CHANGED-Listener verpasst manchmal
+        Updates (besonders bei Solcast nach unavailable-Phasen). Dieser
+        periodische Sync stellt sicher dass unsere Sensoren maximal um
+        das Polling-Intervall (5 Min) hinter dem echten Wert liegen.
+
+        Komplett lokale Operation — kein API-Call zu externen Services,
+        kein Solcast-Cloud-Limit-Verbrauch.
+        """
+        notify_needed = False
+
+        def _read_float(entity_id: str | None) -> float | None:
+            if not entity_id:
+                return None
+            state = self.hass.states.get(entity_id)
+            if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                return None
+            try:
+                return float(state.state)
+            except (ValueError, TypeError):
+                return None
+
+        # Solcast (Tagesprognose + detailedHourly)
+        if self.solcast_forecast_entity:
+            new_val = _read_float(self.solcast_forecast_entity)
+            if new_val is not None and new_val != self._solcast_forecast_today:
+                _LOGGER.debug(
+                    "Backup-Sync: Solcast %s aktualisiert %.2f → %.2f kWh",
+                    self.solcast_forecast_entity,
+                    self._solcast_forecast_today,
+                    new_val,
+                )
+                self._solcast_forecast_today = new_val
+                state = self.hass.states.get(self.solcast_forecast_entity)
+                if state:
+                    self._load_solcast_forecast(state)
+                notify_needed = True
+
+        # PV-Forecast (älteres Feld, manche Setups nutzen das statt Solcast)
+        if self.pv_forecast_entity:
+            new_val = _read_float(self.pv_forecast_entity)
+            if new_val is not None and new_val != self._pv_forecast:
+                _LOGGER.debug(
+                    "Backup-Sync: PV-Forecast %s aktualisiert %.2f → %.2f kWh",
+                    self.pv_forecast_entity,
+                    self._pv_forecast,
+                    new_val,
+                )
+                self._pv_forecast = new_val
+                notify_needed = True
+
+        # EPEX Spot Preis
+        if self.epex_price_entity:
+            new_val = _read_float(self.epex_price_entity)
+            if new_val is not None and new_val != self._epex_price:
+                _LOGGER.debug(
+                    "Backup-Sync: EPEX Preis %s aktualisiert %.4f → %.4f",
+                    self.epex_price_entity,
+                    self._epex_price,
+                    new_val,
+                )
+                self._epex_price = new_val
+                state = self.hass.states.get(self.epex_price_entity)
+                if state:
+                    self._load_epex_forecast(state)
+                notify_needed = True
+
+        # EPEX Spot Quantil
+        if self.epex_quantile_entity:
+            new_val = _read_float(self.epex_quantile_entity)
+            if new_val is not None and new_val != self._epex_quantile:
+                _LOGGER.debug(
+                    "Backup-Sync: EPEX Quantil %s aktualisiert %.2f → %.2f",
+                    self.epex_quantile_entity,
+                    self._epex_quantile,
+                    new_val,
+                )
+                self._epex_quantile = new_val
+                state = self.hass.states.get(self.epex_quantile_entity)
+                if state and not self._epex_price_forecast:
+                    self._load_epex_forecast(state)
+                notify_needed = True
+
+        if notify_needed:
+            self._notify_entities()
+
     def _process_energy_update(self) -> None:
         """Verarbeitet Energie-Updates INKREMENTELL."""
         current_pv = self._pv_production_kwh
@@ -2717,11 +2810,27 @@ class PVManagementController:
         new_state = event.data.get("new_state")
 
         if not new_state or new_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            # Bei Forecast-Entities (Solcast/EPEX/PV-Forecast) kommt unavailable
+            # während Cloud-Updates vor — kein Drama, beim nächsten gültigen
+            # State greift entweder der Listener oder das 5-Min Backup-Polling.
             return
 
         try:
             value = float(new_state.state)
         except (ValueError, TypeError):
+            # Bei den Forecast-Entities kann das auf einen Konfigurationsfehler
+            # hindeuten (User hat einen non-numeric Sensor gewählt). Loggen
+            # damit's beim nächsten Debug-Log auffällt.
+            if entity_id in (
+                self.solcast_forecast_entity,
+                self.pv_forecast_entity,
+                self.epex_price_entity,
+                self.epex_quantile_entity,
+            ):
+                _LOGGER.debug(
+                    "Forecast-Entity %s lieferte non-numerischen state '%s' — übersprungen",
+                    entity_id, new_state.state,
+                )
             return
 
         if self._first_seen_date is None:
@@ -2769,6 +2878,10 @@ class PVManagementController:
 
         # Solcast Sensor
         elif entity_id == self.solcast_forecast_entity:
+            _LOGGER.debug(
+                "Solcast State-Change empfangen: %s = %.2f kWh (vorher: %.2f)",
+                entity_id, value, self._solcast_forecast_today,
+            )
             self._solcast_forecast_today = value
             # Versuche stündliche Prognose aus 'detailedHourly' Attribut zu laden
             self._load_solcast_forecast(new_state)
@@ -3002,6 +3115,19 @@ class PVManagementController:
 
         self._remove_listeners.append(
             self.hass.bus.async_listen(EVENT_STATE_CHANGED, state_listener)
+        )
+
+        # --- Backup-Polling für Forecast-Sensoren (Solcast / EPEX / PV-Forecast)
+        # Lokale Operation alle 5 Min — keine API-Calls. Fängt verlorene
+        # State-Change-Events auf, die der Listener verpasst.
+        from homeassistant.helpers.event import async_track_time_interval
+        from datetime import timedelta as _timedelta
+        self._remove_listeners.append(
+            async_track_time_interval(
+                self.hass,
+                self._sync_forecast_sensors,
+                _timedelta(minutes=5),
+            )
         )
 
         # --- Load Forecast (24x7 profile) — nur wenn aktiviert + Verbrauchs-Entity da ist
