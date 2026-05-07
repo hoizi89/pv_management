@@ -2039,6 +2039,10 @@ class PVManagementController:
         """Synchronisiert die Gesamtersparnis zum Helper."""
         if not self.amortisation_helper:
             return
+        # Race-Schutz: Nicht syncen bevor Restore abgeschlossen — sonst
+        # überschreibt total_savings=0 den persistierten Helper-Wert.
+        if not self._restored:
+            return
 
         try:
             current_savings = self.total_savings

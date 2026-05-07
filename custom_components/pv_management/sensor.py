@@ -2291,10 +2291,14 @@ class BenchmarkScoreSensor(BaseEntity):
                          unit="Punkte", icon="mdi:star-circle",
                          state_class=SensorStateClass.MEASUREMENT,
                          device_type=DEVICE_BENCHMARK)
+        self._last_score: int | None = None
 
     @property
     def native_value(self):
-        return self.ctrl.benchmark_efficiency_score
+        score = self.ctrl.benchmark_efficiency_score
+        if score is not None:
+            self._last_score = score
+        return self._last_score
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -2327,10 +2331,14 @@ class BenchmarkRatingSensor(BaseEntity):
         super().__init__(ctrl, name, "Bewertung",
                          icon="mdi:trophy",
                          device_type=DEVICE_BENCHMARK)
+        self._last_rating: str | None = None
 
     @property
     def native_value(self):
-        return self.ctrl.benchmark_rating
+        rating = self.ctrl.benchmark_rating
+        if rating is not None:
+            self._last_rating = rating
+        return self._last_rating
 
 
 class BenchmarkGridImportSensor(BaseEntity):
