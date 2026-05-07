@@ -2387,7 +2387,9 @@ class PVManagementController:
             state = self.hass.states.get(self.pv_production_entity)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
-                    pv_total = float(state.state)
+                    pv_total = self._convert_energy_to_kwh(
+                        self.pv_production_entity, float(state.state)
+                    )
                 except (ValueError, TypeError):
                     pass
             if pv_total is None:
@@ -2402,7 +2404,9 @@ class PVManagementController:
             state = self.hass.states.get(self.grid_export_entity)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
-                    export_total = float(state.state)
+                    export_total = self._convert_energy_to_kwh(
+                        self.grid_export_entity, float(state.state)
+                    )
                 except (ValueError, TypeError):
                     pass
             if export_total is None:
