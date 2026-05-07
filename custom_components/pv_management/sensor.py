@@ -405,9 +405,12 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
         """Restore saved state."""
         await super().async_added_to_hass()
 
-        # Try to load last state
+        # Try to load last state — auch bei state="unavailable"/"unknown" die
+        # persistierten Attribute restoren, sofern vorhanden. Sonst gehen die
+        # kumulativen Werte verloren wenn der Sensor vor dem Reboot durch die
+        # _restored-Race kurzzeitig unavailable war (Issue #9).
         last_state = await self.async_get_last_state()
-        if last_state and last_state.state not in ("unknown", "unavailable"):
+        if last_state and (last_state.attributes or {}).get("tracked_self_consumption_kwh") is not None:
             # Load extra_state_attributes for the complete data
             attrs = last_state.attributes or {}
 
