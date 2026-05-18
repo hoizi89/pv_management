@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -12,7 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 
 from .const import (
     DOMAIN, DATA_CTRL, CONF_NAME,
@@ -382,6 +383,17 @@ class AmortisationPercentSensor(BaseEntity):
         }
 
 
+@dataclass
+class _PersistedTrackingData(ExtraStoredData):
+    """Kumulative Tracking-Daten, die unabhängig vom Entity-State
+    (auch bei "unavailable") von Home Assistant persistiert werden."""
+
+    data: dict
+
+    def as_dict(self) -> dict:
+        return self.data
+
+
 class TotalSavingsSensor(BaseEntity, RestoreEntity):
     """
     Total savings in Euro.
@@ -405,14 +417,25 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
         """Restore saved state."""
         await super().async_added_to_hass()
 
-        # Try to load last state — auch bei state="unavailable"/"unknown" die
-        # persistierten Attribute restoren, sofern vorhanden. Sonst gehen die
-        # kumulativen Werte verloren wenn der Sensor vor dem Reboot durch die
-        # _restored-Race kurzzeitig unavailable war (Issue #9).
-        last_state = await self.async_get_last_state()
-        if last_state and (last_state.attributes or {}).get("tracked_self_consumption_kwh") is not None:
-            # Load extra_state_attributes for the complete data
-            attrs = last_state.attributes or {}
+        # Issue #9: Kumulative Werte aus extra_restore_state_data laden.
+        # extra_state_attributes eines "unavailable" Sensors werden von HA
+        # NICHT persistiert — extra_restore_state_data dagegen schon. Damit
+        # überleben die Werte den Reboot auch wenn der Sensor durch die
+        # _restored-Race kurzzeitig unavailable war.
+        attrs: dict | None = None
+        last_extra = await self.async_get_last_extra_data()
+        if last_extra is not None:
+            stored = last_extra.as_dict()
+            if isinstance(stored, dict) and stored.get("tracked_self_consumption_kwh") is not None:
+                attrs = stored
+
+        # Fallback: attributbasierter Restore (Migration von Versionen < v4.0.8)
+        if attrs is None:
+            last_state = await self.async_get_last_state()
+            if last_state and (last_state.attributes or {}).get("tracked_self_consumption_kwh") is not None:
+                attrs = dict(last_state.attributes or {})
+
+        if attrs is not None:
 
             # Explicit float conversion (HA sometimes stores as string)
             def safe_float(val, default=0.0):
@@ -533,6 +556,15 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             # Info
             "calculation_method": "incremental (dynamic prices supported)",
         }
+
+    @property
+    def extra_restore_state_data(self) -> _PersistedTrackingData:
+        """Persistiert alle kumulativen Werte über Reboots hinweg (Issue #9).
+
+        Anders als extra_state_attributes wird extra_restore_state_data von
+        HA auch dann gespeichert, wenn die Entity gerade "unavailable" ist.
+        """
+        return _PersistedTrackingData(dict(self.extra_state_attributes))
 
 
 class RemainingCostSensor(BaseEntity):
