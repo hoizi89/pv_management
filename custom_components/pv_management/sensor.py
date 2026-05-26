@@ -146,6 +146,7 @@ async def async_setup_entry(
 
         # === PV SURPLUS (live W) ===
         PVSurplusValueSensor(ctrl, name),
+        PVPeakValueSensor(ctrl, name),
     ]
 
     # === EXPORT-DEPENDENT SENSORS (only if grid export sensor configured) ===
@@ -2642,6 +2643,35 @@ class PVSurplusValueSensor(BaseEntity):
             "hausverbrauch_w": round(self.ctrl.house_power, 0),
             "shiftable_load_w": round(self.ctrl.shiftable_load_power, 0),
             "effektiver_hausverbrauch_w": round(self.ctrl.effective_house_power, 0),
+            "schwellen_w": {
+                k: round(v, 0) for k, v in self.ctrl.surplus_thresholds_w.items()
+            },
+        }
+
+
+class PVPeakValueSensor(BaseEntity):
+    """Aktuell verwendete PV-Anlagen-Peakleistung in W (Fallback-Kette sichtbar)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "PV Peak",
+            unit="W",
+            icon="mdi:solar-power-variant-outline",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.POWER,
+        )
+
+    @property
+    def native_value(self) -> float:
+        return round(self.ctrl.pv_peak_power, 0)
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "quelle": self.ctrl.pv_peak_power_source,
+            "kwp_aus_strings": round(self.ctrl.total_installed_kwp, 2),
             "schwellen_w": {
                 k: round(v, 0) for k, v in self.ctrl.surplus_thresholds_w.items()
             },

@@ -101,7 +101,7 @@
           "consumption_entity": "Total consumption in kWh (rising counter)",
           "pv_power_entity": "Current PV power in Watts (e.g. from your inverter). Together with house power (W) required for the PV surplus sensors.",
           "house_power_entity": "Current house power consumption in Watts (e.g. from your smart meter). Surplus = PV power - house power.",
-          "shiftable_load_entity": "Optional. When your PV-aware load (e.g. heat pump) is running, its consumption is subtracted from house power. Otherwise the load would push surplus below the threshold by its own consumption, causing flapping between ON and OFF.",
+          "shiftable_load_entity": "Optional. Used only for the PV surplus calculation — not used anywhere else. When your PV-aware load (e.g. heat pump) is running, its consumption is subtracted from house power. Otherwise the load would push surplus below the threshold by its own consumption, causing flapping between ON and OFF.",
           "battery_soc_entity": "Current battery state of charge in percent",
           "pv_forecast_entity": "Daily PV forecast in kWh (for recommendation)",
           "pv_peak_power": "Leave empty → auto-derived from your PV strings (sum of configured kWp × 1000 or measured peak). Only set this to override the automatic value. Drives the low/medium/high thresholds (5/15/30 % of peak)."
@@ -368,7 +368,8 @@
       "verbrauch_prognose_heute_rest": { "name": "Load Forecast Rest of Today" },
       "verbrauch_prognose_morgen": { "name": "Load Forecast Tomorrow" },
       "verbrauch_prognose_24h": { "name": "Load Forecast 24h" },
-      "pv_ueberschuss": { "name": "PV Surplus" }
+      "pv_ueberschuss": { "name": "PV Surplus" },
+      "pv_peak": { "name": "PV Peak" }
     }
   }
 }

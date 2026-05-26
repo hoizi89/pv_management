@@ -99,7 +99,7 @@
           "consumption_entity": "Gesamtverbrauch in kWh (steigender Zaehler)",
           "pv_power_entity": "Aktuelle PV-Leistung in Watt (z.B. vom Wechselrichter). Zusammen mit Hausverbrauch (W) erforderlich fuer die PV-Ueberschuss-Sensoren.",
           "house_power_entity": "Aktueller Hausverbrauch in Watt (z.B. vom Smart-Meter). Surplus = PV-Leistung - Hausverbrauch.",
-          "shiftable_load_entity": "Optional. Wenn dein PV-aware Verbraucher (z.B. die Waermepumpe) laeuft, wird seine Last vom Hausverbrauch abgezogen. Sonst wuerde der Verbraucher durch seine eigene Last den Surplus unter die Schwelle druecken und immer wieder zwischen EIN und AUS pendeln.",
+          "shiftable_load_entity": "Optional. Nur fuer die PV-Ueberschuss-Berechnung — wird sonst nirgends verwendet. Wenn dein PV-aware Verbraucher (z.B. die Waermepumpe) laeuft, wird seine Last vom Hausverbrauch abgezogen. Sonst wuerde der Verbraucher durch seine eigene Last den Surplus unter die Schwelle druecken und immer wieder zwischen EIN und AUS pendeln.",
           "battery_soc_entity": "Aktueller Batterie-Ladestand in Prozent",
           "pv_forecast_entity": "Tages-PV-Prognose in kWh (fuer Empfehlung)",
           "pv_peak_power": "Leer lassen → wird automatisch aus deinen PV-Strings abgeleitet (Summe der konfigurierten kWp × 1000 oder gemessener Peak). Nur eintragen wenn du einen anderen Wert erzwingen willst. Steuert die Schwellen low/medium/high (5/15/30 % vom Peak)."
@@ -336,7 +336,8 @@
       "wp_vergleich": { "name": "Heat Pump Comparison" },
       "gesamt_tagesproduktion": { "name": "Total Daily Production" },
       "gesamt_peak": { "name": "Total Peak" },
-      "pv_ueberschuss": { "name": "PV Surplus" }
+      "pv_ueberschuss": { "name": "PV Surplus" },
+      "pv_peak": { "name": "PV Peak" }
     }
   }
 }
