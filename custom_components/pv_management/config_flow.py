@@ -437,7 +437,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             step_id="advanced",
             data_schema=vol.Schema({
                 # PV-Anlage
-                vol.Optional(CONF_PV_PEAK_POWER, default=self._get_val(CONF_PV_PEAK_POWER, DEFAULT_PV_PEAK_POWER)):
+                vol.Optional(CONF_PV_PEAK_POWER,
+                             description={"suggested_value": self._get_val(CONF_PV_PEAK_POWER)}):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=1000.0, max=100000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
                     ),

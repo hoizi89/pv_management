@@ -244,7 +244,8 @@ class PVManagementController:
         self.price_high_threshold = opts.get(CONF_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_HIGH_THRESHOLD)
         self.price_low_threshold = opts.get(CONF_PRICE_LOW_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD)
         self.pv_power_high = opts.get(CONF_PV_POWER_HIGH, DEFAULT_PV_POWER_HIGH)
-        self.pv_peak_power = opts.get(CONF_PV_PEAK_POWER, DEFAULT_PV_PEAK_POWER)
+        # User-Override; None = auto-derive aus PV-Strings (kWp oder gemessener Peak)
+        self._configured_pv_peak_power = opts.get(CONF_PV_PEAK_POWER)
         self.winter_base_load = opts.get(CONF_WINTER_BASE_LOAD, DEFAULT_WINTER_BASE_LOAD)
 
         # Gemeinsame Batterie-Einstellung (für Auto-Charge UND Entlade-Steuerung)
@@ -490,6 +491,41 @@ class PVManagementController:
         if not self.house_power_entity:
             return 0.0
         return max(0.0, self._pv_power - self._house_power)
+
+    @property
+    def pv_peak_power(self) -> float:
+        """PV-Anlagen-Peakleistung in W (Fallback-Kette).
+
+        Reihenfolge:
+        1. User-Override (Config-Feld pv_peak_power, falls explizit gesetzt)
+        2. Summe konfigurierte kWp aus PV-Strings × 1000
+        3. Gemessener Gesamt-Peak (get_total_peak_kw) × 1000
+        4. Default 10000 W (10 kWp Faustwert)
+        """
+        if self._configured_pv_peak_power:
+            try:
+                return float(self._configured_pv_peak_power)
+            except (ValueError, TypeError):
+                pass
+        kwp = self.total_installed_kwp
+        if kwp > 0:
+            return kwp * 1000.0
+        peak_kw = self.get_total_peak_kw()
+        if peak_kw and peak_kw > 0:
+            return peak_kw * 1000.0
+        return DEFAULT_PV_PEAK_POWER
+
+    @property
+    def pv_peak_power_source(self) -> str:
+        """Quelle der Peak-Leistung (fuer Diagnose)."""
+        if self._configured_pv_peak_power:
+            return "user_override"
+        if self.total_installed_kwp > 0:
+            return "pv_strings_kwp"
+        peak_kw = self.get_total_peak_kw()
+        if peak_kw and peak_kw > 0:
+            return "measured_peak"
+        return "default"
 
     @property
     def surplus_thresholds_w(self) -> dict[str, float]:

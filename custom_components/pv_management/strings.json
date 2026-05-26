@@ -189,7 +189,7 @@
         "title": "Erweiterte Einstellungen",
         "description": "Schwellwerte fuer die Empfehlungs-Ampel und PV-Anlagen-Konfiguration.",
         "data": {
-          "pv_peak_power": "PV Peak-Leistung",
+          "pv_peak_power": "PV Peak-Leistung (auto)",
           "winter_base_load": "Winter-Grundlast",
           "battery_soc_high": "Batterie 'voll' Schwelle",
           "battery_soc_low": "Batterie 'leer' Schwelle",
@@ -197,7 +197,7 @@
           "price_high_threshold": "Preis 'teuer' Schwelle"
         },
         "data_description": {
-          "pv_peak_power": "Peak-Leistung deiner PV-Anlage in Watt (z.B. 10000 fuer 10kWp)",
+          "pv_peak_power": "Leer lassen → wird automatisch aus deinen PV-Strings abgeleitet (Summe der konfigurierten kWp × 1000 oder gemessener Peak). Nur eintragen wenn du einen anderen Wert erzwingen willst.",
           "winter_base_load": "Grundlast im Winter (z.B. Waermepumpe) - wird von verfuegbarer PV abgezogen",
           "battery_soc_high": "Ab diesem Wert gilt Batterie als voll (fuer Ampel)",
           "battery_soc_low": "Unter diesem Wert gilt Batterie als leer (fuer Ampel)",

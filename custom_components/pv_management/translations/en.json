@@ -249,7 +249,7 @@
         "title": "Advanced Settings",
         "description": "Thresholds for the recommendation traffic light and PV system configuration.",
         "data": {
-          "pv_peak_power": "PV Peak Power",
+          "pv_peak_power": "PV Peak Power (auto)",
           "winter_base_load": "Winter Base Load",
           "battery_soc_high": "Battery 'Full' Threshold",
           "battery_soc_low": "Battery 'Empty' Threshold",
@@ -257,7 +257,7 @@
           "price_high_threshold": "Price 'Expensive' Threshold"
         },
         "data_description": {
-          "pv_peak_power": "Peak power of your PV system in Watt (e.g. 10000 for 10kWp)",
+          "pv_peak_power": "Leave empty → auto-derived from your PV strings (sum of configured kWp × 1000 or measured peak). Only set this to override the automatic value.",
           "winter_base_load": "Base load in winter (e.g. heat pump) - subtracted from available PV",
           "battery_soc_high": "Above this value, battery is considered full (for traffic light)",
           "battery_soc_low": "Below this value, battery is considered empty (for traffic light)",
