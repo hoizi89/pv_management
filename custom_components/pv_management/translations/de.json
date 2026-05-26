@@ -69,6 +69,7 @@
           "consumption_entity": "Hausverbrauch (kWh)",
           "battery_soc_entity": "Batterie-Ladestand (%)",
           "pv_power_entity": "Aktuelle PV-Leistung (W)",
+          "house_power_entity": "Aktueller Hausverbrauch (W)",
           "pv_forecast_entity": "PV-Prognose (kWh)"
         },
         "data_description": {
@@ -78,6 +79,7 @@
           "consumption_entity": "Gesamtverbrauch in kWh (steigender Zaehler)",
           "battery_soc_entity": "Aktueller Batterie-Ladestand in Prozent",
           "pv_power_entity": "Aktuelle PV-Leistung in Watt (fuer Empfehlung)",
+          "house_power_entity": "Aktueller Hausverbrauch in Watt (W). Pflicht fuer PV-Ueberschuss-Sensoren (Surplus = PV-Leistung minus Hausverbrauch).",
           "pv_forecast_entity": "Tages-PV-Prognose in kWh (fuer Empfehlung)"
         }
       },
@@ -324,7 +326,8 @@
       "verbrauch_prognose_6h": { "name": "Verbrauch Prognose 6h" },
       "verbrauch_prognose_heute_rest": { "name": "Verbrauch Prognose Heute Rest" },
       "verbrauch_prognose_morgen": { "name": "Verbrauch Prognose Morgen" },
-      "verbrauch_prognose_24h": { "name": "Verbrauch Prognose 24h" }
+      "verbrauch_prognose_24h": { "name": "Verbrauch Prognose 24h" },
+      "pv_ueberschuss": { "name": "PV-Ueberschuss" }
     }
   }
 }

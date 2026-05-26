@@ -11,6 +11,7 @@ from .const import (
     CONF_NAME, CONF_PV_PRODUCTION_ENTITY, CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
+    CONF_HOUSE_POWER_ENTITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
@@ -237,7 +238,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
                 CONF_GRID_EXPORT_ENTITY, CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
-                CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY))
+                CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
+                CONF_HOUSE_POWER_ENTITY))
 
         return self.async_show_form(
             step_id="sensors",
@@ -249,6 +251,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 **self._optional_entity(CONF_CONSUMPTION_ENTITY, device_class="energy"),
                 **self._optional_entity(CONF_BATTERY_SOC_ENTITY, device_class="battery"),
                 **self._optional_entity(CONF_PV_POWER_ENTITY, device_class="power"),
+                **self._optional_entity(CONF_HOUSE_POWER_ENTITY, device_class="power"),
                 **self._optional_entity(CONF_PV_FORECAST_ENTITY),
             })
         )

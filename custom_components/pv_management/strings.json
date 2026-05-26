@@ -12,6 +12,7 @@
           "consumption_entity": "Hausverbrauch Sensor (kWh/Wh, optional)",
           "battery_soc_entity": "Batterie-Ladestand Sensor (%, optional)",
           "pv_power_entity": "PV-Leistung Sensor (W, optional)",
+          "house_power_entity": "Hausverbrauch Leistung Sensor (W, optional)",
           "pv_forecast_entity": "PV-Prognose Sensor (kWh, optional)",
           "electricity_price_unit": "Strompreis-Einheit",
           "electricity_price": "Strompreis (Fallback)",
@@ -35,6 +36,7 @@
           "consumption_entity": "Stetig steigender Energiezaehler (kWh) fuer den Gesamtverbrauch des Haushalts.",
           "battery_soc_entity": "Sensor fuer Batterie-Ladestand in % (fuer Empfehlung)",
           "pv_power_entity": "Sensor fuer aktuelle PV-Leistung in W (fuer Empfehlung)",
+          "house_power_entity": "Sensor fuer aktuellen Hausverbrauch in W (fuer PV-Ueberschuss-Berechnung)",
           "pv_forecast_entity": "Sensor fuer PV-Tagesprognose in kWh (fuer Empfehlung)",
           "electricity_price_unit": "Waehle ob der Strompreis in Euro oder Cent pro kWh angegeben wird",
           "electricity_price": "Wird verwendet wenn kein Sensor konfiguriert oder Sensor nicht verfuegbar",
@@ -85,6 +87,7 @@
           "consumption_entity": "Hausverbrauch (kWh)",
           "battery_soc_entity": "Batterie-Ladestand (%)",
           "pv_power_entity": "Aktuelle PV-Leistung (W)",
+          "house_power_entity": "Aktueller Hausverbrauch (W)",
           "pv_forecast_entity": "PV-Prognose (kWh)"
         },
         "data_description": {
@@ -94,6 +97,7 @@
           "consumption_entity": "Gesamtverbrauch in kWh (steigender Zaehler)",
           "battery_soc_entity": "Aktueller Batterie-Ladestand in Prozent",
           "pv_power_entity": "Aktuelle PV-Leistung in Watt (fuer Empfehlung)",
+          "house_power_entity": "Aktueller Hausverbrauch in Watt (W). Pflicht fuer PV-Ueberschuss-Sensoren (Surplus = PV-Leistung minus Hausverbrauch).",
           "pv_forecast_entity": "Tages-PV-Prognose in kWh (fuer Empfehlung)"
         }
       },
@@ -329,7 +333,8 @@
       "wp_verbrauch": { "name": "Heat Pump Consumption" },
       "wp_vergleich": { "name": "Heat Pump Comparison" },
       "gesamt_tagesproduktion": { "name": "Total Daily Production" },
-      "gesamt_peak": { "name": "Total Peak" }
+      "gesamt_peak": { "name": "Total Peak" },
+      "pv_ueberschuss": { "name": "PV Surplus" }
     }
   }
 }

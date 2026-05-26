@@ -12,6 +12,7 @@
           "consumption_entity": "Household Consumption Sensor (kWh, optional)",
           "battery_soc_entity": "Battery SOC Sensor (%, optional)",
           "pv_power_entity": "PV Power Sensor (W, optional)",
+          "house_power_entity": "House Power Sensor (W, optional)",
           "pv_forecast_entity": "PV Forecast Sensor (kWh, optional)",
           "electricity_price_unit": "Electricity Price Unit",
           "electricity_price": "Electricity Price (Fallback)",
@@ -35,6 +36,7 @@
           "consumption_entity": "Ever-increasing energy counter (kWh) for total household consumption.",
           "battery_soc_entity": "Sensor for battery state of charge in % (for recommendation)",
           "pv_power_entity": "Sensor for current PV power in W (for recommendation)",
+          "house_power_entity": "Sensor for current household power consumption in Watts (W). Required for PV surplus sensors (surplus = PV power minus house power).",
           "pv_forecast_entity": "Sensor for daily PV forecast in kWh (for recommendation)",
           "electricity_price_unit": "Choose whether electricity price is in Euro or Cent per kWh",
           "electricity_price": "Used when no sensor is configured or sensor is unavailable",
@@ -87,6 +89,7 @@
           "consumption_entity": "Household Consumption (kWh)",
           "battery_soc_entity": "Battery SOC (%)",
           "pv_power_entity": "Current PV Power (W)",
+          "house_power_entity": "Current House Power (W)",
           "pv_forecast_entity": "PV Forecast (kWh)"
         },
         "data_description": {
@@ -96,6 +99,7 @@
           "consumption_entity": "Total consumption in kWh (rising counter)",
           "battery_soc_entity": "Current battery state of charge in percent",
           "pv_power_entity": "Current PV power in Watt (for recommendation)",
+          "house_power_entity": "Current household power consumption in Watts (W). Required for PV surplus sensors (surplus = PV power minus house power).",
           "pv_forecast_entity": "Daily PV forecast in kWh (for recommendation)"
         }
       },
@@ -361,7 +365,8 @@
       "verbrauch_prognose_6h": { "name": "Load Forecast 6h" },
       "verbrauch_prognose_heute_rest": { "name": "Load Forecast Rest of Today" },
       "verbrauch_prognose_morgen": { "name": "Load Forecast Tomorrow" },
-      "verbrauch_prognose_24h": { "name": "Load Forecast 24h" }
+      "verbrauch_prognose_24h": { "name": "Load Forecast 24h" },
+      "pv_ueberschuss": { "name": "PV Surplus" }
     }
   }
 }

@@ -143,6 +143,9 @@ async def async_setup_entry(
         AutoChargePriceQuantileSensor(ctrl, name),
         AutoChargeConditionsSensor(ctrl, name),
         AutoChargeDiagnosticSensor(ctrl, name),
+
+        # === PV SURPLUS (live W) ===
+        PVSurplusValueSensor(ctrl, name),
     ]
 
     # === EXPORT-DEPENDENT SENSORS (only if grid export sensor configured) ===
@@ -471,7 +474,6 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "daily_feed_in_earnings": safe_float(attrs.get("daily_feed_in_earnings")),
                 "daily_feed_in_kwh": safe_float(attrs.get("daily_feed_in_kwh")),
                 "daily_reset_date": attrs.get("daily_reset_date"),
-                "quota_day_start_meter": safe_float(attrs.get("quota_day_start_meter")),
                 # Monthly tracking
                 "monthly_grid_import_kwh": safe_float(attrs.get("monthly_grid_import_kwh")),
                 "monthly_grid_import_cost": safe_float(attrs.get("monthly_grid_import_cost")),
@@ -540,7 +542,6 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "daily_feed_in_earnings": round(self.ctrl._daily_feed_in_earnings, 4),
             "daily_feed_in_kwh": round(self.ctrl._daily_feed_in_kwh, 4),
             "daily_reset_date": date.today().isoformat(),
-            "quota_day_start_meter": self.ctrl._quota_day_start_meter,
             # Monthly tracking
             "monthly_grid_import_kwh": round(self.ctrl._monthly_grid_import_kwh, 4),
             "monthly_grid_import_cost": round(self.ctrl._monthly_grid_import_cost, 4),
@@ -2605,3 +2606,41 @@ class LoadForecast24hSensor(_ForecastBaseSensor):
         except Exception:
             pass
         return attrs
+
+
+# =============================================================================
+# PV SURPLUS (live)
+# =============================================================================
+
+
+class PVSurplusValueSensor(BaseEntity):
+    """Aktueller PV-Überschuss in W (pv_power - house_power, clamp >= 0)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "PV Ueberschuss",
+            unit="W",
+            icon="mdi:solar-power-variant",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.POWER,
+        )
+
+    @property
+    def available(self) -> bool:
+        return bool(self.ctrl.house_power_entity) and super().available
+
+    @property
+    def native_value(self) -> float:
+        return round(self.ctrl.current_pv_surplus_w, 0)
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "pv_leistung_w": round(self.ctrl.pv_power, 0),
+            "hausverbrauch_w": round(self.ctrl.house_power, 0),
+            "schwellen_w": {
+                k: round(v, 0) for k, v in self.ctrl.surplus_thresholds_w.items()
+            },
+        }

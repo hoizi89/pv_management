@@ -228,3 +228,20 @@ FORECAST_WEEKS_CHOICES: Final[tuple[int, ...]] = (2, 4, 6)
 FORECAST_REFRESH_SECONDS: Final[int] = 3600
 FORECAST_MIN_DAYS_FULL: Final[int] = 14
 FORECAST_MIN_DAYS_ANY: Final[int] = 3
+
+# --- PV Surplus Threshold Sensors ---------------------------------------------
+# Live surplus = pv_power - house_power. Three binary sensors with auto-derived
+# thresholds (ratios of pv_peak_power) drive PV-aware consumers.
+CONF_HOUSE_POWER_ENTITY: Final[str] = "house_power_entity"
+
+# Schwellen als Prozent der PV-Peak-Leistung (z.B. 10 kWp → 500/1500/3000 W)
+SURPLUS_RATIOS: Final[dict[str, float]] = {
+    "low": 0.05,
+    "medium": 0.15,
+    "high": 0.30,
+}
+# Hysterese (50 % der Schwelle): ON > threshold, OFF < threshold * (1 - hyst_ratio)
+SURPLUS_HYSTERESIS_RATIO: Final[float] = 0.5
+# Anti-Flacker-Filter: erst nach diesen Sekunden stabil schalten
+SURPLUS_ON_DELAY: Final[int] = 300   # 5 min — gegen Peak-Spike triggern
+SURPLUS_OFF_DELAY: Final[int] = 600  # 10 min — gegen Wolken-Aussetzer

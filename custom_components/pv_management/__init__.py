@@ -55,6 +55,7 @@ from .const import (
     CONF_FORECAST_ENABLED, CONF_FORECAST_WEEKS, CONF_FORECAST_MODAL_DROP,
     CONF_FORECAST_HP_ENTITY, CONF_FORECAST_EV_ENTITY,
     DEFAULT_FORECAST_ENABLED, DEFAULT_FORECAST_WEEKS, DEFAULT_FORECAST_MODAL_DROP,
+    CONF_HOUSE_POWER_ENTITY, SURPLUS_RATIOS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class PVManagementController:
         # Aktuelle Live-Werte für Empfehlung
         self._battery_soc = 0.0  # %
         self._pv_power = 0.0     # W
+        self._house_power = 0.0  # W
         self._pv_forecast = 0.0  # kWh
 
         # EPEX Spot Werte
@@ -212,6 +214,9 @@ class PVManagementController:
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
         self.pv_power_entity = opts.get(CONF_PV_POWER_ENTITY)
         self.pv_forecast_entity = opts.get(CONF_PV_FORECAST_ENTITY)
+
+        # PV-Überschuss: Haus-Leistungssensor (W) für surplus = pv_power - house_power
+        self.house_power_entity = opts.get(CONF_HOUSE_POWER_ENTITY)
 
         # EPEX Spot Entities
         self.epex_price_entity = opts.get(CONF_EPEX_PRICE_ENTITY)
@@ -470,6 +475,26 @@ class PVManagementController:
     def pv_forecast(self) -> float:
         """PV-Prognose in kWh."""
         return self._pv_forecast
+
+    @property
+    def house_power(self) -> float:
+        """Aktueller Hausverbrauch (W) — falls house_power_entity konfiguriert."""
+        return self._house_power
+
+    @property
+    def current_pv_surplus_w(self) -> float:
+        """Aktueller PV-Überschuss in W: pv_power - house_power, clamp >= 0.
+
+        Falls house_power_entity nicht konfiguriert ist, wird 0 zurückgegeben
+        (keine Überschuss-Berechnung möglich)."""
+        if not self.house_power_entity:
+            return 0.0
+        return max(0.0, self._pv_power - self._house_power)
+
+    @property
+    def surplus_thresholds_w(self) -> dict[str, float]:
+        """Auto-derived ON-Schwellen pro Stufe (ratio * pv_peak_power)."""
+        return {key: self.pv_peak_power * ratio for key, ratio in SURPLUS_RATIOS.items()}
 
     @property
     def epex_price(self) -> float:
@@ -2937,6 +2962,9 @@ class PVManagementController:
         elif entity_id == self.pv_power_entity:
             self._pv_power = value
             recommendation_changed = True
+        elif entity_id == self.house_power_entity:
+            self._house_power = value
+            recommendation_changed = True
         elif entity_id == self.pv_forecast_entity:
             self._pv_forecast = value
             recommendation_changed = True
@@ -3037,6 +3065,7 @@ class PVManagementController:
         for entity_id, attr in [
             (self.battery_soc_entity, "_battery_soc"),
             (self.pv_power_entity, "_pv_power"),
+            (self.house_power_entity, "_house_power"),
             (self.pv_forecast_entity, "_pv_forecast"),
         ]:
             if entity_id:
