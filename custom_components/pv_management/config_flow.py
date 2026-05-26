@@ -11,7 +11,7 @@ from .const import (
     CONF_NAME, CONF_PV_PRODUCTION_ENTITY, CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
-    CONF_HOUSE_POWER_ENTITY,
+    CONF_HOUSE_POWER_ENTITY, CONF_SHIFTABLE_LOAD_ENTITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
@@ -202,12 +202,12 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options={
-                "sensors": "Sensoren",
-                "prices": "Strompreise",
+                "sensors": "Sensoren & Leistungen",
+                "tariff": "Tarif & Kosten",
                 "integrations": "Integrationen (EPEX/Solcast)",
-                "helper": "Amortisation Helper",
                 "battery": "Batterie-Steuerung",
-                "advanced": "Erweiterte Einstellungen",
+                "amortisation": "Amortisation-Persistenz",
+                "advanced": "Empfehlungs-Schwellwerte",
                 "benchmark": "Energie-Benchmark",
                 "pv_strings": "PV-Strings",
                 "forecast": "Lastvorhersage",
@@ -234,36 +234,46 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return await self.async_step_init()
 
     async def async_step_sensors(self, user_input=None):
-        """Energie-Sensoren konfigurieren."""
+        """Energie-Sensoren und Live-Leistungen konfigurieren."""
         if user_input is not None:
             return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
                 CONF_GRID_EXPORT_ENTITY, CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
                 CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
-                CONF_HOUSE_POWER_ENTITY))
+                CONF_HOUSE_POWER_ENTITY, CONF_SHIFTABLE_LOAD_ENTITY))
 
         return self.async_show_form(
             step_id="sensors",
             data_schema=vol.Schema({
+                # --- Energie-Zaehler (kWh) ----------------------------------
                 vol.Required(CONF_PV_PRODUCTION_ENTITY, default=self._get_val(CONF_PV_PRODUCTION_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="energy")),
                 **self._optional_entity(CONF_GRID_EXPORT_ENTITY, device_class="energy"),
                 **self._optional_entity(CONF_GRID_IMPORT_ENTITY, device_class="energy"),
                 **self._optional_entity(CONF_CONSUMPTION_ENTITY, device_class="energy"),
-                **self._optional_entity(CONF_BATTERY_SOC_ENTITY, device_class="battery"),
+                # --- Live-Leistungen (W) ------------------------------------
                 **self._optional_entity(CONF_PV_POWER_ENTITY, device_class="power"),
                 **self._optional_entity(CONF_HOUSE_POWER_ENTITY, device_class="power"),
+                **self._optional_entity(CONF_SHIFTABLE_LOAD_ENTITY, device_class="power"),
+                # --- Batterie & PV-Prognose ---------------------------------
+                **self._optional_entity(CONF_BATTERY_SOC_ENTITY, device_class="battery"),
                 **self._optional_entity(CONF_PV_FORECAST_ENTITY),
+                # --- PV-Anlage (auto-derive aus Strings, optional Override) -
+                vol.Optional(CONF_PV_PEAK_POWER,
+                             description={"suggested_value": self._get_val(CONF_PV_PEAK_POWER)}):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=1000.0, max=100000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
+                    ),
             })
         )
 
-    async def async_step_prices(self, user_input=None):
-        """Strompreise konfigurieren."""
+    async def async_step_tariff(self, user_input=None):
+        """Tarif & Kosten: Strompreise, Einspeisung, Anschaffung."""
         if user_input is not None:
             return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
                 CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY))
 
         return self.async_show_form(
-            step_id="prices",
+            step_id="tariff",
             data_schema=vol.Schema({
                 # Strompreis
                 vol.Required(CONF_ELECTRICITY_PRICE_UNIT, default=self._get_val(CONF_ELECTRICITY_PRICE_UNIT, DEFAULT_ELECTRICITY_PRICE_UNIT)):
@@ -330,13 +340,13 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             })
         )
 
-    async def async_step_helper(self, user_input=None):
-        """Amortisation Helper konfigurieren."""
+    async def async_step_amortisation(self, user_input=None):
+        """Amortisation-Persistenz: Helper fuer dauerhaft gespeicherte Werte."""
         if user_input is not None:
             return await self._save_and_return_to_menu(user_input)
 
         return self.async_show_form(
-            step_id="helper",
+            step_id="amortisation",
             data_schema=vol.Schema({
                 **self._optional_entity(CONF_AMORTISATION_HELPER, domain="input_number"),
                 vol.Optional(CONF_RESTORE_FROM_HELPER, default=self._get_val(CONF_RESTORE_FROM_HELPER, False)):
@@ -436,12 +446,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="advanced",
             data_schema=vol.Schema({
-                # PV-Anlage
-                vol.Optional(CONF_PV_PEAK_POWER,
-                             description={"suggested_value": self._get_val(CONF_PV_PEAK_POWER)}):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(min=1000.0, max=100000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
-                    ),
+                # Hinweis: PV-Peak-Leistung wurde nach "Sensoren & Leistungen" verschoben
 
                 vol.Optional(CONF_WINTER_BASE_LOAD, default=self._get_val(CONF_WINTER_BASE_LOAD, DEFAULT_WINTER_BASE_LOAD)):
                     selector.NumberSelector(

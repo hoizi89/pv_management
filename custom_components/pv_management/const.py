@@ -234,6 +234,10 @@ FORECAST_MIN_DAYS_ANY: Final[int] = 3
 # thresholds (ratios of pv_peak_power) drive PV-aware consumers.
 CONF_HOUSE_POWER_ENTITY: Final[str] = "house_power_entity"
 
+# PV-gesteuerter Verbraucher (W) - Last wird aus Surplus-Rechnung ausgeklammert,
+# damit Verbraucher sich nicht selbst durch eigene Last abschaltet.
+CONF_SHIFTABLE_LOAD_ENTITY: Final[str] = "shiftable_load_entity"
+
 # Schwellen als Prozent der PV-Peak-Leistung (z.B. 10 kWp → 500/1500/3000 W)
 SURPLUS_RATIOS: Final[dict[str, float]] = {
     "low": 0.05,

@@ -2640,6 +2640,8 @@ class PVSurplusValueSensor(BaseEntity):
         return {
             "pv_leistung_w": round(self.ctrl.pv_power, 0),
             "hausverbrauch_w": round(self.ctrl.house_power, 0),
+            "shiftable_load_w": round(self.ctrl.shiftable_load_power, 0),
+            "effektiver_hausverbrauch_w": round(self.ctrl.effective_house_power, 0),
             "schwellen_w": {
                 k: round(v, 0) for k, v in self.ctrl.surplus_thresholds_w.items()
             },

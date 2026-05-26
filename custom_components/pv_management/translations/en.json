@@ -67,12 +67,12 @@
         "title": "PV Management Settings",
         "description": "All features are here. Tip: Enable Battery, EPEX Spot, Benchmark and PV Strings for the full experience!",
         "menu_options": {
-          "sensors": "Sensors",
-          "prices": "Electricity Prices",
+          "sensors": "Sensors & Power",
+          "tariff": "Tariff & Costs",
           "integrations": "Integrations (EPEX/Solcast)",
-          "helper": "Amortization Helper",
           "battery": "Battery Control",
-          "advanced": "Advanced Settings",
+          "amortisation": "Amortization Persistence",
+          "advanced": "Recommendation Thresholds",
           "benchmark": "Energy Benchmark",
           "pv_strings": "PV Strings",
           "forecast": "Load Forecast",
@@ -80,32 +80,36 @@
         }
       },
       "sensors": {
-        "title": "Energy Sensors",
-        "description": "Configure energy sensors for PV, grid, and battery.",
+        "title": "Sensors & Power",
+        "description": "Energy counters (kWh) + live power (W) for the PV surplus sensors + battery + PV forecast + system peak.",
         "data": {
           "pv_production_entity": "PV Production (kWh)",
           "grid_export_entity": "Grid Export (kWh)",
           "grid_import_entity": "Grid Import (kWh)",
           "consumption_entity": "Household Consumption (kWh)",
-          "battery_soc_entity": "Battery SOC (%)",
           "pv_power_entity": "Current PV Power (W)",
           "house_power_entity": "Current House Power (W)",
-          "pv_forecast_entity": "PV Forecast (kWh)"
+          "shiftable_load_entity": "PV-aware Load (W)",
+          "battery_soc_entity": "Battery SOC (%)",
+          "pv_forecast_entity": "PV Forecast (kWh)",
+          "pv_peak_power": "PV System Peak Power (W, auto)"
         },
         "data_description": {
           "pv_production_entity": "Total PV production in kWh (rising counter)",
           "grid_export_entity": "Grid export in kWh (rising counter)",
           "grid_import_entity": "Grid import in kWh (rising counter)",
           "consumption_entity": "Total consumption in kWh (rising counter)",
+          "pv_power_entity": "Current PV power in Watts (e.g. from your inverter). Together with house power (W) required for the PV surplus sensors.",
+          "house_power_entity": "Current house power consumption in Watts (e.g. from your smart meter). Surplus = PV power - house power.",
+          "shiftable_load_entity": "Optional. When your PV-aware load (e.g. heat pump) is running, its consumption is subtracted from house power. Otherwise the load would push surplus below the threshold by its own consumption, causing flapping between ON and OFF.",
           "battery_soc_entity": "Current battery state of charge in percent",
-          "pv_power_entity": "Current PV power in Watt (for recommendation)",
-          "house_power_entity": "Current household power consumption in Watts (W). Required for PV surplus sensors (surplus = PV power minus house power).",
-          "pv_forecast_entity": "Daily PV forecast in kWh (for recommendation)"
+          "pv_forecast_entity": "Daily PV forecast in kWh (for recommendation)",
+          "pv_peak_power": "Leave empty → auto-derived from your PV strings (sum of configured kWp × 1000 or measured peak). Only set this to override the automatic value. Drives the low/medium/high thresholds (5/15/30 % of peak)."
         }
       },
-      "prices": {
-        "title": "Electricity Prices & Amortization",
-        "description": "Configure electricity price, feed-in tariff, and installation cost.",
+      "tariff": {
+        "title": "Tariff & Costs",
+        "description": "Electricity price, feed-in tariff, installation costs and fixed-price comparison.",
         "data": {
           "electricity_price_unit": "Electricity Price Unit",
           "electricity_price": "Electricity Price (Fallback)",
@@ -145,8 +149,8 @@
           "solcast_forecast_entity": "Solcast PV forecast for today in kWh"
         }
       },
-      "helper": {
-        "title": "Amortization Helper",
+      "amortisation": {
+        "title": "Amortization Persistence",
         "description": "The helper stores total savings (EUR) independently of the integration.",
         "data": {
           "amortisation_helper": "Amortization Helper (input_number)",
@@ -246,10 +250,9 @@
         }
       },
       "advanced": {
-        "title": "Advanced Settings",
-        "description": "Thresholds for the recommendation traffic light and PV system configuration.",
+        "title": "Recommendation Thresholds",
+        "description": "Thresholds for the consumption recommendation traffic light. PV peak is now under 'Sensors & Power'.",
         "data": {
-          "pv_peak_power": "PV Peak Power (auto)",
           "winter_base_load": "Winter Base Load",
           "battery_soc_high": "Battery 'Full' Threshold",
           "battery_soc_low": "Battery 'Empty' Threshold",
@@ -257,7 +260,6 @@
           "price_high_threshold": "Price 'Expensive' Threshold"
         },
         "data_description": {
-          "pv_peak_power": "Leave empty → auto-derived from your PV strings (sum of configured kWp × 1000 or measured peak). Only set this to override the automatic value.",
           "winter_base_load": "Base load in winter (e.g. heat pump) - subtracted from available PV",
           "battery_soc_high": "Above this value, battery is considered full (for traffic light)",
           "battery_soc_low": "Below this value, battery is considered empty (for traffic light)",

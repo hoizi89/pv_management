@@ -67,43 +67,47 @@
         "title": "PV Management Einstellungen",
         "description": "Hier findest du alle Funktionen. Tipp: Batterie, EPEX Spot, Benchmark und PV-Strings aktivieren fuer den vollen Funktionsumfang!",
         "menu_options": {
-          "sensors": "Sensoren konfigurieren",
-          "prices": "Strompreise & Amortisation",
+          "sensors": "Sensoren & Leistungen",
+          "tariff": "Tarif & Kosten",
           "integrations": "Integrationen (EPEX/Solcast)",
-          "helper": "Amortisation Helper",
           "battery": "Batterie-Steuerung",
-          "advanced": "Erweiterte Einstellungen",
+          "amortisation": "Amortisation-Persistenz",
+          "advanced": "Empfehlungs-Schwellwerte",
           "benchmark": "Energie-Benchmark",
           "pv_strings": "PV-Strings"
         }
       },
       "sensors": {
-        "title": "Sensoren",
-        "description": "Konfiguriere die Energie-Sensoren fuer PV, Netz und Batterie.",
+        "title": "Sensoren & Leistungen",
+        "description": "Energie-Zaehler (kWh) + Live-Leistungen (W) fuer die PV-Ueberschuss-Sensoren + Batterie + PV-Prognose + Anlagen-Peak.",
         "data": {
           "pv_production_entity": "PV Produktion (kWh)",
           "grid_export_entity": "Netzeinspeisung (kWh)",
           "grid_import_entity": "Netzbezug (kWh)",
           "consumption_entity": "Hausverbrauch (kWh)",
-          "battery_soc_entity": "Batterie-Ladestand (%)",
           "pv_power_entity": "Aktuelle PV-Leistung (W)",
           "house_power_entity": "Aktueller Hausverbrauch (W)",
-          "pv_forecast_entity": "PV-Prognose (kWh)"
+          "shiftable_load_entity": "PV-gesteuerter Verbraucher (W)",
+          "battery_soc_entity": "Batterie-Ladestand (%)",
+          "pv_forecast_entity": "PV-Prognose (kWh)",
+          "pv_peak_power": "PV-Anlagen-Peakleistung (W, auto)"
         },
         "data_description": {
           "pv_production_entity": "Gesamte PV-Produktion in kWh (steigender Zaehler)",
           "grid_export_entity": "Netzeinspeisung in kWh (steigender Zaehler)",
           "grid_import_entity": "Netzbezug in kWh (steigender Zaehler)",
           "consumption_entity": "Gesamtverbrauch in kWh (steigender Zaehler)",
+          "pv_power_entity": "Aktuelle PV-Leistung in Watt (z.B. vom Wechselrichter). Zusammen mit Hausverbrauch (W) erforderlich fuer die PV-Ueberschuss-Sensoren.",
+          "house_power_entity": "Aktueller Hausverbrauch in Watt (z.B. vom Smart-Meter). Surplus = PV-Leistung - Hausverbrauch.",
+          "shiftable_load_entity": "Optional. Wenn dein PV-aware Verbraucher (z.B. die Waermepumpe) laeuft, wird seine Last vom Hausverbrauch abgezogen. Sonst wuerde der Verbraucher durch seine eigene Last den Surplus unter die Schwelle druecken und immer wieder zwischen EIN und AUS pendeln.",
           "battery_soc_entity": "Aktueller Batterie-Ladestand in Prozent",
-          "pv_power_entity": "Aktuelle PV-Leistung in Watt (fuer Empfehlung)",
-          "house_power_entity": "Aktueller Hausverbrauch in Watt (W). Pflicht fuer PV-Ueberschuss-Sensoren (Surplus = PV-Leistung minus Hausverbrauch).",
-          "pv_forecast_entity": "Tages-PV-Prognose in kWh (fuer Empfehlung)"
+          "pv_forecast_entity": "Tages-PV-Prognose in kWh (fuer Empfehlung)",
+          "pv_peak_power": "Leer lassen → wird automatisch aus deinen PV-Strings abgeleitet (Summe der konfigurierten kWp × 1000 oder gemessener Peak). Nur eintragen wenn du einen anderen Wert erzwingen willst. Steuert die Schwellen low/medium/high (5/15/30 % vom Peak)."
         }
       },
-      "prices": {
-        "title": "Strompreise & Amortisation",
-        "description": "Konfiguriere Strompreis, Einspeiseverguetung und Anschaffungskosten.",
+      "tariff": {
+        "title": "Tarif & Kosten",
+        "description": "Strompreis, Einspeiseverguetung, Anschaffungskosten und Fixpreis-Vergleich.",
         "data": {
           "electricity_price_unit": "Strompreis-Einheit",
           "electricity_price": "Strompreis (Fallback)",
@@ -143,8 +147,8 @@
           "solcast_forecast_entity": "Solcast PV-Prognose fuer heute in kWh"
         }
       },
-      "helper": {
-        "title": "Amortisation Helper",
+      "amortisation": {
+        "title": "Amortisation-Persistenz",
         "description": "Der Helper speichert die Gesamtersparnis (EUR) unabhaengig von der Integration.",
         "data": {
           "amortisation_helper": "Amortisation Helper (input_number)",
@@ -186,10 +190,9 @@
         }
       },
       "advanced": {
-        "title": "Erweiterte Einstellungen",
-        "description": "Schwellwerte fuer die Empfehlungs-Ampel und PV-Anlagen-Konfiguration.",
+        "title": "Empfehlungs-Schwellwerte",
+        "description": "Schwellwerte fuer die Verbrauchs-Empfehlungs-Ampel. PV-Peak ist jetzt unter 'Sensoren & Leistungen'.",
         "data": {
-          "pv_peak_power": "PV Peak-Leistung (auto)",
           "winter_base_load": "Winter-Grundlast",
           "battery_soc_high": "Batterie 'voll' Schwelle",
           "battery_soc_low": "Batterie 'leer' Schwelle",
@@ -197,7 +200,6 @@
           "price_high_threshold": "Preis 'teuer' Schwelle"
         },
         "data_description": {
-          "pv_peak_power": "Leer lassen → wird automatisch aus deinen PV-Strings abgeleitet (Summe der konfigurierten kWp × 1000 oder gemessener Peak). Nur eintragen wenn du einen anderen Wert erzwingen willst.",
           "winter_base_load": "Grundlast im Winter (z.B. Waermepumpe) - wird von verfuegbarer PV abgezogen",
           "battery_soc_high": "Ab diesem Wert gilt Batterie als voll (fuer Ampel)",
           "battery_soc_low": "Unter diesem Wert gilt Batterie als leer (fuer Ampel)",
