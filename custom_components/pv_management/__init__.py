@@ -2846,11 +2846,19 @@ class PVManagementController:
             return
 
         # Option B: Totals aus Baselines absolut berechnen
-        new_total_self_consumption = max(
-            0.0,
+        calculated_self_consumption = (
             self._baseline_self_consumption_kwh
             + (current_pv - self._baseline_pv_production_kwh)
-            - (current_export - self._baseline_grid_export_kwh),
+            - (current_export - self._baseline_grid_export_kwh)
+        )
+        # Eigenverbrauch ist ein TOTAL_INCREASING-Zaehler und darf NIE sinken.
+        # Steigt der Export schneller als die PV-Produktion (z.B. voller Speicher,
+        # oder PV-Sensor misst "ins Haus" statt Brutto), wird calculated_* negativ.
+        # Gegen den bisherigen Total klemmen -> effective_delta_self bleibt >= 0,
+        # die Ersparnis kann nicht mehr faelschlich abgezogen werden (Issue #14).
+        new_total_self_consumption = max(
+            self._total_self_consumption_kwh,
+            calculated_self_consumption,
         )
         new_total_feed_in = max(
             0.0,
@@ -2956,7 +2964,8 @@ class PVManagementController:
             self._monthly_bucket_month = current_month_bucket
 
         bucket = self._monthly_buckets[current_month_bucket]
-        # Effective Deltas — können auch negativ sein (selbstkorrigierend)
+        # effective_delta_self ist durch die monotone Klemmung oben immer >= 0
+        # (Issue #14). effective_delta_feed_in/delta_import bleiben selbstkorrigierend.
         bucket["self_consumption"] += effective_delta_self
         bucket["grid_import"] += delta_import
         bucket["feed_in"] += effective_delta_feed_in
