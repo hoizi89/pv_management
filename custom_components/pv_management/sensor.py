@@ -144,10 +144,16 @@ async def async_setup_entry(
         AutoChargeConditionsSensor(ctrl, name),
         AutoChargeDiagnosticSensor(ctrl, name),
 
-        # === PV SURPLUS (live W) ===
-        PVSurplusValueSensor(ctrl, name),
-        PVPeakValueSensor(ctrl, name),
     ]
+
+    # === PV SURPLUS (live W) — only if house power sensor is configured ===
+    # Without house_power these sensors are permanently "unavailable",
+    # so we don't create them at all instead of cluttering the device.
+    if ctrl.house_power_entity:
+        entities.extend([
+            PVSurplusValueSensor(ctrl, name),
+            PVPeakValueSensor(ctrl, name),
+        ])
 
     # === EXPORT-DEPENDENT SENSORS (only if grid export sensor configured) ===
     if ctrl.grid_export_entity:
