@@ -132,6 +132,9 @@ class PVManagementController:
         self._baseline_grid_export_kwh: float | None = None
         self._baseline_self_consumption_kwh: float | None = None
         self._baseline_feed_in_kwh: float | None = None
+        # Option B (Issue #14 Folgefix): Eigenverbrauch = Hausverbrauch - Netzbezug
+        self._baseline_consumption_kwh: float | None = None
+        self._baseline_grid_import_kwh: float | None = None
 
         # Strompreis-Tracking für Durchschnittsberechnung (gewichtet nach Verbrauch)
         self._total_grid_import_cost = 0.0  # Gesamtkosten Netzbezug in €
@@ -2286,6 +2289,8 @@ class PVManagementController:
         self._baseline_grid_export_kwh = safe_float_or_none(data.get("baseline_grid_export_kwh"))
         self._baseline_self_consumption_kwh = safe_float_or_none(data.get("baseline_self_consumption_kwh"))
         self._baseline_feed_in_kwh = safe_float_or_none(data.get("baseline_feed_in_kwh"))
+        self._baseline_consumption_kwh = safe_float_or_none(data.get("baseline_consumption_kwh"))
+        self._baseline_grid_import_kwh = safe_float_or_none(data.get("baseline_grid_import_kwh"))
 
         # Strompreis-Tracking Daten wiederherstellen
         self._tracked_grid_import_kwh = safe_float(data.get("tracked_grid_import_kwh"))
@@ -2535,6 +2540,8 @@ class PVManagementController:
         self._baseline_grid_export_kwh = export_total
         self._baseline_self_consumption_kwh = self_consumption
         self._baseline_feed_in_kwh = feed_in
+        self._baseline_consumption_kwh = self._consumption_kwh
+        self._baseline_grid_import_kwh = self._grid_import_kwh
 
         _LOGGER.info(
             "PV Management initialisiert: PV=%.2f, Export=%.2f → "
@@ -2565,6 +2572,8 @@ class PVManagementController:
             "baseline_grid_export_kwh": self._baseline_grid_export_kwh,
             "baseline_self_consumption_kwh": self._baseline_self_consumption_kwh,
             "baseline_feed_in_kwh": self._baseline_feed_in_kwh,
+            "baseline_consumption_kwh": self._baseline_consumption_kwh,
+            "baseline_grid_import_kwh": self._baseline_grid_import_kwh,
             "first_seen_date": self._first_seen_date.isoformat() if self._first_seen_date else None,
             # Strompreis-Tracking
             "tracked_grid_import_kwh": self._tracked_grid_import_kwh,
@@ -2823,6 +2832,8 @@ class PVManagementController:
             self._baseline_grid_export_kwh = current_export
             self._baseline_self_consumption_kwh = self._total_self_consumption_kwh
             self._baseline_feed_in_kwh = self._total_feed_in_kwh
+            self._baseline_consumption_kwh = self._consumption_kwh
+            self._baseline_grid_import_kwh = current_import
             _LOGGER.info(
                 "Baseline initialisiert: PV=%.2f, Export=%.2f, Self=%.2f, Feed=%.2f kWh",
                 current_pv, current_export,
@@ -2840,22 +2851,39 @@ class PVManagementController:
             self._baseline_grid_export_kwh = current_export
             self._baseline_self_consumption_kwh = self._total_self_consumption_kwh
             self._baseline_feed_in_kwh = self._total_feed_in_kwh
+            self._baseline_consumption_kwh = self._consumption_kwh
+            self._baseline_grid_import_kwh = current_import
             self._last_pv_production_kwh = current_pv
             self._last_grid_export_kwh = current_export
             self._last_grid_import_kwh = current_import
             return
 
-        # Option B: Totals aus Baselines absolut berechnen
-        calculated_self_consumption = (
-            self._baseline_self_consumption_kwh
-            + (current_pv - self._baseline_pv_production_kwh)
-            - (current_export - self._baseline_grid_export_kwh)
-        )
-        # Eigenverbrauch ist ein TOTAL_INCREASING-Zaehler und darf NIE sinken.
-        # Steigt der Export schneller als die PV-Produktion (z.B. voller Speicher,
-        # oder PV-Sensor misst "ins Haus" statt Brutto), wird calculated_* negativ.
-        # Gegen den bisherigen Total klemmen -> effective_delta_self bleibt >= 0,
-        # die Ersparnis kann nicht mehr faelschlich abgezogen werden (Issue #14).
+        # Option B: Totals aus Baselines absolut berechnen.
+        # Bevorzugt Eigenverbrauch = Hausverbrauch - Netzbezug (batterie-, speicher-
+        # und exportunabhaengig; korrekt auch bei vollem Speicher + laufender Einspeisung).
+        # Fallback auf PV - Einspeisung, wenn kein Verbrauchs-/Netzbezugs-Sensor da ist.
+        # (Issue #14 Folgefix: Eigenverbrauch waehrend Export wurde sonst nicht erfasst,
+        # weil ein Netto-PV-Sensor "ins Haus" die Einspeisung doppelt abzieht.)
+        if self.consumption_entity and self.grid_import_entity:
+            current_consumption = self._consumption_kwh
+            # Lazy-Init der neuen Baselines (Migration bestehender Installationen)
+            if (self._baseline_consumption_kwh is None
+                    or self._baseline_grid_import_kwh is None):
+                self._baseline_consumption_kwh = current_consumption
+                self._baseline_grid_import_kwh = current_import
+            calculated_self_consumption = (
+                self._baseline_self_consumption_kwh
+                + (current_consumption - self._baseline_consumption_kwh)
+                - (current_import - self._baseline_grid_import_kwh)
+            )
+        else:
+            calculated_self_consumption = (
+                self._baseline_self_consumption_kwh
+                + (current_pv - self._baseline_pv_production_kwh)
+                - (current_export - self._baseline_grid_export_kwh)
+            )
+        # Eigenverbrauch ist ein TOTAL_INCREASING-Zaehler und darf NIE sinken
+        # -> gegen bisherigen Total klemmen, effective_delta_self bleibt >= 0 (Issue #14).
         new_total_self_consumption = max(
             self._total_self_consumption_kwh,
             calculated_self_consumption,
@@ -2882,6 +2910,8 @@ class PVManagementController:
             self._baseline_grid_export_kwh = current_export
             self._baseline_self_consumption_kwh = self._total_self_consumption_kwh
             self._baseline_feed_in_kwh = self._total_feed_in_kwh
+            self._baseline_consumption_kwh = self._consumption_kwh
+            self._baseline_grid_import_kwh = current_import
             self._last_pv_production_kwh = current_pv
             self._last_grid_export_kwh = current_export
             self._last_grid_import_kwh = current_import
