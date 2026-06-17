@@ -197,20 +197,40 @@ CONF_PV_STRING_3_NAME: Final[str] = "pv_string_3_name"
 CONF_PV_STRING_3_ENTITY: Final[str] = "pv_string_3_entity"
 CONF_PV_STRING_4_NAME: Final[str] = "pv_string_4_name"
 CONF_PV_STRING_4_ENTITY: Final[str] = "pv_string_4_entity"
+CONF_PV_STRING_5_NAME: Final[str] = "pv_string_5_name"
+CONF_PV_STRING_5_ENTITY: Final[str] = "pv_string_5_entity"
+CONF_PV_STRING_6_NAME: Final[str] = "pv_string_6_name"
+CONF_PV_STRING_6_ENTITY: Final[str] = "pv_string_6_entity"
+CONF_PV_STRING_7_NAME: Final[str] = "pv_string_7_name"
+CONF_PV_STRING_7_ENTITY: Final[str] = "pv_string_7_entity"
+CONF_PV_STRING_8_NAME: Final[str] = "pv_string_8_name"
+CONF_PV_STRING_8_ENTITY: Final[str] = "pv_string_8_entity"
 CONF_PV_STRING_1_POWER: Final[str] = "pv_string_1_power"
 CONF_PV_STRING_2_POWER: Final[str] = "pv_string_2_power"
 CONF_PV_STRING_3_POWER: Final[str] = "pv_string_3_power"
 CONF_PV_STRING_4_POWER: Final[str] = "pv_string_4_power"
+CONF_PV_STRING_5_POWER: Final[str] = "pv_string_5_power"
+CONF_PV_STRING_6_POWER: Final[str] = "pv_string_6_power"
+CONF_PV_STRING_7_POWER: Final[str] = "pv_string_7_power"
+CONF_PV_STRING_8_POWER: Final[str] = "pv_string_8_power"
 CONF_PV_STRING_1_KWP: Final[str] = "pv_string_1_kwp"
 CONF_PV_STRING_2_KWP: Final[str] = "pv_string_2_kwp"
 CONF_PV_STRING_3_KWP: Final[str] = "pv_string_3_kwp"
 CONF_PV_STRING_4_KWP: Final[str] = "pv_string_4_kwp"
+CONF_PV_STRING_5_KWP: Final[str] = "pv_string_5_kwp"
+CONF_PV_STRING_6_KWP: Final[str] = "pv_string_6_kwp"
+CONF_PV_STRING_7_KWP: Final[str] = "pv_string_7_kwp"
+CONF_PV_STRING_8_KWP: Final[str] = "pv_string_8_kwp"
 
 PV_STRING_CONFIGS = [
     (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_1_POWER, CONF_PV_STRING_1_KWP),
     (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY, CONF_PV_STRING_2_POWER, CONF_PV_STRING_2_KWP),
     (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_3_POWER, CONF_PV_STRING_3_KWP),
     (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY, CONF_PV_STRING_4_POWER, CONF_PV_STRING_4_KWP),
+    (CONF_PV_STRING_5_NAME, CONF_PV_STRING_5_ENTITY, CONF_PV_STRING_5_POWER, CONF_PV_STRING_5_KWP),
+    (CONF_PV_STRING_6_NAME, CONF_PV_STRING_6_ENTITY, CONF_PV_STRING_6_POWER, CONF_PV_STRING_6_KWP),
+    (CONF_PV_STRING_7_NAME, CONF_PV_STRING_7_ENTITY, CONF_PV_STRING_7_POWER, CONF_PV_STRING_7_KWP),
+    (CONF_PV_STRING_8_NAME, CONF_PV_STRING_8_ENTITY, CONF_PV_STRING_8_POWER, CONF_PV_STRING_8_KWP),
 ]
 
 # --- Load Forecast (24x7 hour-of-day x day-of-week profile) -------------------

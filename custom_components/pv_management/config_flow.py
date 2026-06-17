@@ -47,14 +47,7 @@ from .const import (
     DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
     DEFAULT_BENCHMARK_HEATPUMP, RANGE_HOUSEHOLD_SIZE,
     CONF_YEARLY_COST, DEFAULT_YEARLY_COST,
-    CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY,
-    CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY,
-    CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY,
-    CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY,
-    CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
-    CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER,
-    CONF_PV_STRING_1_KWP, CONF_PV_STRING_2_KWP,
-    CONF_PV_STRING_3_KWP, CONF_PV_STRING_4_KWP,
+    PV_STRING_CONFIGS,
     CONF_FORECAST_ENABLED, CONF_FORECAST_WEEKS, CONF_FORECAST_MODAL_DROP,
     CONF_FORECAST_HP_ENTITY, CONF_FORECAST_EV_ENTITY,
     DEFAULT_FORECAST_ENABLED, DEFAULT_FORECAST_WEEKS, DEFAULT_FORECAST_MODAL_DROP,
@@ -525,19 +518,16 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_pv_strings(self, user_input=None):
         """PV-Strings konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
-                CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_2_ENTITY,
-                CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_4_ENTITY,
-                CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
-                CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER))
+            # Alle Entity-/Power-Felder aller Strings als optional behandeln (generisch)
+            optional_keys = tuple(
+                key
+                for _, entity_key, power_key, _ in PV_STRING_CONFIGS
+                for key in (entity_key, power_key)
+            )
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=optional_keys)
 
         schema = {}
-        for i, (name_key, entity_key, power_key, kwp_key) in enumerate([
-            (CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_1_POWER, CONF_PV_STRING_1_KWP),
-            (CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY, CONF_PV_STRING_2_POWER, CONF_PV_STRING_2_KWP),
-            (CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_3_POWER, CONF_PV_STRING_3_KWP),
-            (CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY, CONF_PV_STRING_4_POWER, CONF_PV_STRING_4_KWP),
-        ], 1):
+        for i, (name_key, entity_key, power_key, kwp_key) in enumerate(PV_STRING_CONFIGS, 1):
             schema[vol.Optional(name_key, default=self._get_val(name_key, ""))] = selector.TextSelector()
             entity_val = self._get_val(entity_key)
             if entity_val:

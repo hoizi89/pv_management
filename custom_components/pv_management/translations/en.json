@@ -193,7 +193,7 @@
       },
       "pv_strings": {
         "title": "PV Strings",
-        "description": "Configure up to 4 PV strings for comparison. Only strings with name AND sensor will be shown.",
+        "description": "Configure up to 8 PV strings for comparison. Only strings with name AND sensor will be shown.",
         "data": {
           "pv_string_1_name": "String 1 Name",
           "pv_string_1_entity": "String 1 Sensor (kWh)",
@@ -210,7 +210,23 @@
           "pv_string_4_name": "String 4 Name",
           "pv_string_4_entity": "String 4 Sensor (kWh)",
           "pv_string_4_power": "String 4 Power (W)",
-          "pv_string_4_kwp": "String 4 Installed Capacity (kWp)"
+          "pv_string_4_kwp": "String 4 Installed Capacity (kWp)",
+          "pv_string_5_name": "String 5 Name",
+          "pv_string_5_entity": "String 5 Sensor (kWh)",
+          "pv_string_5_power": "String 5 Power (W)",
+          "pv_string_5_kwp": "String 5 Installed Capacity (kWp)",
+          "pv_string_6_name": "String 6 Name",
+          "pv_string_6_entity": "String 6 Sensor (kWh)",
+          "pv_string_6_power": "String 6 Power (W)",
+          "pv_string_6_kwp": "String 6 Installed Capacity (kWp)",
+          "pv_string_7_name": "String 7 Name",
+          "pv_string_7_entity": "String 7 Sensor (kWh)",
+          "pv_string_7_power": "String 7 Power (W)",
+          "pv_string_7_kwp": "String 7 Installed Capacity (kWp)",
+          "pv_string_8_name": "String 8 Name",
+          "pv_string_8_entity": "String 8 Sensor (kWh)",
+          "pv_string_8_power": "String 8 Power (W)",
+          "pv_string_8_kwp": "String 8 Installed Capacity (kWp)"
         },
         "data_description": {
           "pv_string_1_name": "e.g. South Roof",
@@ -228,7 +244,23 @@
           "pv_string_4_name": "e.g. Garage",
           "pv_string_4_entity": "kWh counter for this string",
           "pv_string_4_power": "Power sensor (W) for peak detection (optional)",
-          "pv_string_4_kwp": "Installed nameplate capacity in kWp (optional)"
+          "pv_string_4_kwp": "Installed nameplate capacity in kWp (optional)",
+          "pv_string_5_name": "e.g. Carport",
+          "pv_string_5_entity": "kWh counter for this string",
+          "pv_string_5_power": "Power sensor (W) for peak detection (optional)",
+          "pv_string_5_kwp": "Installed nameplate capacity in kWp (optional)",
+          "pv_string_6_name": "e.g. Shed",
+          "pv_string_6_entity": "kWh counter for this string",
+          "pv_string_6_power": "Power sensor (W) for peak detection (optional)",
+          "pv_string_6_kwp": "Installed nameplate capacity in kWp (optional)",
+          "pv_string_7_name": "e.g. Facade",
+          "pv_string_7_entity": "kWh counter for this string",
+          "pv_string_7_power": "Power sensor (W) for peak detection (optional)",
+          "pv_string_7_kwp": "Installed nameplate capacity in kWp (optional)",
+          "pv_string_8_name": "e.g. Ground Mount",
+          "pv_string_8_entity": "kWh counter for this string",
+          "pv_string_8_power": "Power sensor (W) for peak detection (optional)",
+          "pv_string_8_kwp": "Installed nameplate capacity in kWp (optional)"
         }
       },
       "forecast": {

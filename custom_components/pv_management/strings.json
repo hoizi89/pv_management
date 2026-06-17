@@ -228,7 +228,7 @@
       },
       "pv_strings": {
         "title": "PV-Strings",
-        "description": "Konfiguriere bis zu 4 PV-Strings zum Vergleich. Nur Strings mit Name UND Sensor werden angezeigt.",
+        "description": "Konfiguriere bis zu 8 PV-Strings zum Vergleich. Nur Strings mit Name UND Sensor werden angezeigt.",
         "data": {
           "pv_string_1_name": "String 1 Name",
           "pv_string_1_entity": "String 1 Sensor (kWh)",
@@ -245,7 +245,23 @@
           "pv_string_4_name": "String 4 Name",
           "pv_string_4_entity": "String 4 Sensor (kWh)",
           "pv_string_4_power": "String 4 Leistung (W)",
-          "pv_string_4_kwp": "String 4 Installierte Leistung (kWp)"
+          "pv_string_4_kwp": "String 4 Installierte Leistung (kWp)",
+          "pv_string_5_name": "String 5 Name",
+          "pv_string_5_entity": "String 5 Sensor (kWh)",
+          "pv_string_5_power": "String 5 Leistung (W)",
+          "pv_string_5_kwp": "String 5 Installierte Leistung (kWp)",
+          "pv_string_6_name": "String 6 Name",
+          "pv_string_6_entity": "String 6 Sensor (kWh)",
+          "pv_string_6_power": "String 6 Leistung (W)",
+          "pv_string_6_kwp": "String 6 Installierte Leistung (kWp)",
+          "pv_string_7_name": "String 7 Name",
+          "pv_string_7_entity": "String 7 Sensor (kWh)",
+          "pv_string_7_power": "String 7 Leistung (W)",
+          "pv_string_7_kwp": "String 7 Installierte Leistung (kWp)",
+          "pv_string_8_name": "String 8 Name",
+          "pv_string_8_entity": "String 8 Sensor (kWh)",
+          "pv_string_8_power": "String 8 Leistung (W)",
+          "pv_string_8_kwp": "String 8 Installierte Leistung (kWp)"
         },
         "data_description": {
           "pv_string_1_name": "z.B. Sued-Dach",
@@ -263,7 +279,23 @@
           "pv_string_4_name": "z.B. Garage",
           "pv_string_4_entity": "kWh-Zaehler fuer diesen String",
           "pv_string_4_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
-          "pv_string_4_kwp": "Installierte Nennleistung in kWp (optional)"
+          "pv_string_4_kwp": "Installierte Nennleistung in kWp (optional)",
+          "pv_string_5_name": "z.B. Carport",
+          "pv_string_5_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_5_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
+          "pv_string_5_kwp": "Installierte Nennleistung in kWp (optional)",
+          "pv_string_6_name": "z.B. Gartenhaus",
+          "pv_string_6_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_6_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
+          "pv_string_6_kwp": "Installierte Nennleistung in kWp (optional)",
+          "pv_string_7_name": "z.B. Fassade",
+          "pv_string_7_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_7_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
+          "pv_string_7_kwp": "Installierte Nennleistung in kWp (optional)",
+          "pv_string_8_name": "z.B. Freiflaeche",
+          "pv_string_8_entity": "kWh-Zaehler fuer diesen String",
+          "pv_string_8_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
+          "pv_string_8_kwp": "Installierte Nennleistung in kWp (optional)"
         }
       }
     }
