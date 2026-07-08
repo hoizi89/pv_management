@@ -225,7 +225,7 @@ class PVManagementController:
         self.battery_power_entity = opts.get(CONF_BATTERY_POWER_ENTITY)
         self.battery_power_invert = opts.get(CONF_BATTERY_POWER_INVERT, DEFAULT_BATTERY_POWER_INVERT)
         self.grid_power_entity = opts.get(CONF_GRID_POWER_ENTITY)
-        self._battery_power_ema = None
+        self._battery_power_samples = []
 
         # PV-Überschuss: Haus-Leistungssensor (W) für surplus = pv_power - house_power
         self.house_power_entity = opts.get(CONF_HOUSE_POWER_ENTITY)
@@ -542,11 +542,13 @@ class PVManagementController:
         raw = self.battery_power_w
         if soc is None or raw is None:
             return None
-        if self._battery_power_ema is None:
-            self._battery_power_ema = raw
-        else:
-            self._battery_power_ema = 0.2 * raw + 0.8 * self._battery_power_ema
-        p = self._battery_power_ema
+        now = datetime.now()
+        self._battery_power_samples.append((now, raw))
+        self._battery_power_samples = [
+            (t, v) for (t, v) in self._battery_power_samples
+            if (now - t).total_seconds() <= 600.0
+        ]
+        p = sum(v for _, v in self._battery_power_samples) / len(self._battery_power_samples)
         quelle = "direkt" if self.battery_power_entity else "berechnet"
         if abs(p) < 50.0:  # idle -> avoid division by ~0
             return {"mode": "idle", "hours": None, "power_w": round(p), "quelle": quelle, "ready_at": None}

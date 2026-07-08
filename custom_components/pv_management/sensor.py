@@ -297,7 +297,7 @@ class BatteryTimeRemainingSensor(BaseEntity):
         rt = self._runtime
         if not rt or rt.get("hours") is None:
             return None
-        return round(rt["hours"], 1)
+        return round(rt["hours"] * 2) / 2  # round to nearest 0.5 h for a calm display
 
     @property
     def icon(self):
