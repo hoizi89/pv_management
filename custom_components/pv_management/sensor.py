@@ -221,6 +221,8 @@ async def async_setup_entry(
         if any(p for _, _, p, _ in ctrl.pv_strings):
             entities.append(TotalPeakSensor(ctrl, name))
 
+    if ctrl.battery_soc_entity:
+        entities.append(BatteryTimeRemainingSensor(ctrl, name))
     async_add_entities(entities)
 
 
@@ -277,6 +279,50 @@ class BaseEntity(SensorEntity):
     def _on_ctrl_update(self):
         if not self._removed and self.hass:
             self.async_write_ha_state()
+
+
+class BatteryTimeRemainingSensor(BaseEntity):
+    """Estimated time until the battery reaches its full/empty threshold."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl, name, "Restlaufzeit", unit="h", icon="mdi:battery-clock",
+            state_class=SensorStateClass.MEASUREMENT, device_type=DEVICE_BATTERY,
+        )
+        self._runtime = None
+
+    @property
+    def native_value(self):
+        self._runtime = self.ctrl.battery_runtime()
+        rt = self._runtime
+        if not rt or rt.get("hours") is None:
+            return None
+        return round(rt["hours"], 1)
+
+    @property
+    def icon(self):
+        rt = self._runtime
+        if not rt:
+            return "mdi:battery-clock"
+        if rt.get("mode") == "laden":
+            return "mdi:battery-charging"
+        if rt.get("mode") == "entladen":
+            return "mdi:battery-arrow-down"
+        return "mdi:battery-clock"
+
+    @property
+    def extra_state_attributes(self):
+        rt = self._runtime
+        if not rt:
+            return {"modus": "unbekannt"}
+        attrs = {"modus": rt.get("mode"), "leistung_w": rt.get("power_w"), "quelle": rt.get("quelle")}
+        hours = rt.get("hours")
+        if hours is not None:
+            h = int(hours)
+            m = int(round((hours - h) * 60))
+            attrs["dauer"] = f"{h}h {m:02d}min"
+            attrs["voraussichtlich_um"] = rt.get("ready_at")
+        return attrs
 
 
 class PVStringSensor(BaseEntity):

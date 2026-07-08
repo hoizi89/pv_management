@@ -23,6 +23,10 @@ CONF_CONSUMPTION_ENTITY: Final[str] = "consumption_entity"
 
 # --- Sensors for recommendation logic -----------------------------------------
 CONF_BATTERY_SOC_ENTITY: Final[str] = "battery_soc_entity"
+CONF_BATTERY_CAPACITY: Final[str] = "battery_capacity"           # kWh — for time-remaining
+CONF_BATTERY_POWER_ENTITY: Final[str] = "battery_power_entity"   # instantaneous battery power (W)
+CONF_BATTERY_POWER_INVERT: Final[str] = "battery_power_invert"   # flip sign (charge/discharge)
+CONF_GRID_POWER_ENTITY: Final[str] = "grid_power_entity"         # grid power (W) for fallback derivation
 CONF_PV_POWER_ENTITY: Final[str] = "pv_power_entity"
 CONF_PV_FORECAST_ENTITY: Final[str] = "pv_forecast_entity"
 
@@ -86,6 +90,9 @@ DEFAULT_ENERGY_OFFSET_EXPORT: Final[float] = 0.0  # kWh export before tracking
 # Recommendation defaults
 DEFAULT_BATTERY_SOC_HIGH: Final[float] = 80.0  # % - battery "full"
 DEFAULT_BATTERY_SOC_LOW: Final[float] = 20.0   # % - battery "empty"
+DEFAULT_BATTERY_CAPACITY: Final[float] = 10.0  # kWh
+DEFAULT_BATTERY_POWER_INVERT: Final[bool] = False
+RANGE_BATTERY_CAPACITY: Final[dict] = {"min": 0.1, "max": 200.0, "step": 0.1}
 DEFAULT_PRICE_HIGH_THRESHOLD: Final[float] = 0.30  # €/kWh - expensive
 DEFAULT_PRICE_LOW_THRESHOLD: Final[float] = 0.15   # €/kWh - cheap
 DEFAULT_PV_POWER_HIGH: Final[float] = 1000.0  # W - high PV (fallback)

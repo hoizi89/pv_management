@@ -12,6 +12,8 @@ from .const import (
     CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
     CONF_HOUSE_POWER_ENTITY, CONF_SHIFTABLE_LOAD_ENTITY,
+    CONF_BATTERY_CAPACITY, CONF_BATTERY_POWER_ENTITY, CONF_BATTERY_POWER_INVERT, CONF_GRID_POWER_ENTITY,
+    DEFAULT_BATTERY_CAPACITY, DEFAULT_BATTERY_POWER_INVERT, RANGE_BATTERY_CAPACITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
@@ -232,7 +234,8 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
             return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
                 CONF_GRID_EXPORT_ENTITY, CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
                 CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
-                CONF_HOUSE_POWER_ENTITY, CONF_SHIFTABLE_LOAD_ENTITY))
+                CONF_HOUSE_POWER_ENTITY, CONF_SHIFTABLE_LOAD_ENTITY,
+                CONF_BATTERY_POWER_ENTITY, CONF_GRID_POWER_ENTITY))
 
         return self.async_show_form(
             step_id="sensors",
@@ -249,6 +252,15 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 **self._optional_entity(CONF_SHIFTABLE_LOAD_ENTITY, device_class="power"),
                 # --- Batterie & PV-Prognose ---------------------------------
                 **self._optional_entity(CONF_BATTERY_SOC_ENTITY, device_class="battery"),
+                **self._optional_entity(CONF_BATTERY_POWER_ENTITY, device_class="power"),
+                vol.Optional(CONF_BATTERY_POWER_INVERT, default=self._get_val(CONF_BATTERY_POWER_INVERT, DEFAULT_BATTERY_POWER_INVERT)):
+                    selector.BooleanSelector(),
+                **self._optional_entity(CONF_GRID_POWER_ENTITY, device_class="power"),
+                vol.Optional(CONF_BATTERY_CAPACITY, default=self._get_val(CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)):
+                    selector.NumberSelector(selector.NumberSelectorConfig(
+                        min=RANGE_BATTERY_CAPACITY["min"], max=RANGE_BATTERY_CAPACITY["max"],
+                        step=RANGE_BATTERY_CAPACITY["step"], unit_of_measurement="kWh",
+                        mode=selector.NumberSelectorMode.BOX)),
                 **self._optional_entity(CONF_PV_FORECAST_ENTITY),
                 # --- PV-Anlage (auto-derive aus Strings, optional Override) -
                 vol.Optional(CONF_PV_PEAK_POWER,

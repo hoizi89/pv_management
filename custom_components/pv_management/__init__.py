@@ -19,6 +19,7 @@ from .const import (
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE, CONF_SAVINGS_OFFSET,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
+    CONF_BATTERY_CAPACITY, CONF_BATTERY_POWER_ENTITY, CONF_BATTERY_POWER_INVERT, CONF_GRID_POWER_ENTITY,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
@@ -35,6 +36,7 @@ from .const import (
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
+    DEFAULT_BATTERY_CAPACITY, DEFAULT_BATTERY_POWER_INVERT,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
     DEFAULT_PV_PEAK_POWER, DEFAULT_WINTER_BASE_LOAD,
     DEFAULT_AUTO_CHARGE_ENABLED, DEFAULT_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_PV_THRESHOLD,
@@ -219,6 +221,11 @@ class PVManagementController:
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
         self.pv_power_entity = opts.get(CONF_PV_POWER_ENTITY)
         self.pv_forecast_entity = opts.get(CONF_PV_FORECAST_ENTITY)
+        self.battery_capacity = opts.get(CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)
+        self.battery_power_entity = opts.get(CONF_BATTERY_POWER_ENTITY)
+        self.battery_power_invert = opts.get(CONF_BATTERY_POWER_INVERT, DEFAULT_BATTERY_POWER_INVERT)
+        self.grid_power_entity = opts.get(CONF_GRID_POWER_ENTITY)
+        self._battery_power_ema = None
 
         # PV-Überschuss: Haus-Leistungssensor (W) für surplus = pv_power - house_power
         self.house_power_entity = opts.get(CONF_HOUSE_POWER_ENTITY)
@@ -507,6 +514,54 @@ class PVManagementController:
         abgezogen: 'was der Rest des Hauses verbraucht'.
         """
         return max(0.0, self._house_power - self.shiftable_load_power)
+
+    @property
+    def battery_power_w(self) -> float | None:
+        """Instantaneous battery power in W. Positive = charging, negative = discharging.
+        Primary source: a dedicated power entity. Fallback: derive from PV - house - grid."""
+        if self.battery_power_entity:
+            val, ok = self._get_entity_value(self.battery_power_entity)
+            if not ok:
+                return None
+            return -val if self.battery_power_invert else val
+        if self.grid_power_entity:
+            grid, ok = self._get_entity_value(self.grid_power_entity)
+            if not ok:
+                return None
+            derived = self.pv_power - self.effective_house_power - grid
+            return -derived if self.battery_power_invert else derived
+        return None
+
+    def battery_runtime(self) -> dict | None:
+        """Estimated time until the battery reaches its 'full' (soc_high) or 'empty'
+        (soc_low) threshold. Charging -> time to full, discharging -> time to empty,
+        idle -> hours None. Power is EMA-smoothed so the display doesn't jump."""
+        if not self.battery_soc_entity or self.battery_capacity <= 0:
+            return None
+        soc = self.battery_soc
+        raw = self.battery_power_w
+        if soc is None or raw is None:
+            return None
+        if self._battery_power_ema is None:
+            self._battery_power_ema = raw
+        else:
+            self._battery_power_ema = 0.2 * raw + 0.8 * self._battery_power_ema
+        p = self._battery_power_ema
+        quelle = "direkt" if self.battery_power_entity else "berechnet"
+        if abs(p) < 50.0:  # idle -> avoid division by ~0
+            return {"mode": "idle", "hours": None, "power_w": round(p), "quelle": quelle, "ready_at": None}
+        if p > 0:  # charging -> until 'full' threshold
+            remaining_kwh = self.battery_capacity * max(0.0, self.battery_soc_high - soc) / 100.0
+            hours = remaining_kwh / (p / 1000.0)
+            mode = "laden"
+        else:      # discharging -> until 'empty' threshold
+            remaining_kwh = self.battery_capacity * max(0.0, soc - self.battery_soc_low) / 100.0
+            hours = remaining_kwh / (abs(p) / 1000.0)
+            mode = "entladen"
+        hours = max(0.0, hours)
+        from datetime import timedelta
+        ready_at = (datetime.now() + timedelta(hours=hours)).strftime("%H:%M")
+        return {"mode": mode, "hours": hours, "power_w": round(p), "quelle": quelle, "ready_at": ready_at}
 
     @property
     def current_pv_surplus_w(self) -> float:

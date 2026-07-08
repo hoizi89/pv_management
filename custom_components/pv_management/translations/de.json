@@ -321,6 +321,7 @@
       "amort_ersparnis_jahr": { "name": "Amort Ersparnis/Jahr" },
       "amort_tage": { "name": "Amort Tage" },
       "amort_restlaufzeit": { "name": "Amort Restlaufzeit" },
+      "restlaufzeit": { "name": "Restlaufzeit" },
       "amort_datum": { "name": "Amort Datum" },
       "co2_ersparnis": { "name": "CO2 Ersparnis" },
       "strompreis": { "name": "Strompreis" },
