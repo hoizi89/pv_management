@@ -1,6 +1,6 @@
 # PV Management
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/hoizi89/pv_management)](https://github.com/hoizi89/pv_management/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-%E2%98%95-FFB020?style=flat-square&labelColor=1A1E2B)](https://buymeacoffee.com/hoizi89)
@@ -154,10 +154,11 @@ Compare your electricity consumption with the average for your country — **com
 
 ### HACS (recommended)
 
-1. Open HACS > Integrations > 3-dot menu > **Custom repositories**
-2. URL: `https://github.com/hoizi89/pv_management`
-3. Category: **Integration**
-4. Install and **restart** Home Assistant
+The integration is part of the HACS default list, so no custom repository is needed.
+
+1. Open HACS and search for **PV Management**
+2. Install it and **restart** Home Assistant
+3. Settings > Devices & Services > **Add integration** > search for it again
 
 ### Manual
 
