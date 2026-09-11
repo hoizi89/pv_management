@@ -60,8 +60,14 @@ internals, zero setup.
 | `sensor.*_verbrauch_prognose_morgen` | kWh tomorrow (00:00 – 23:00) | Overnight charge decision |
 | `sensor.*_verbrauch_prognose_24h` | rolling 24 h from now | Main signal for charge logic |
 
-The **Morgen** and **24h** sensors also carry a `forecast_hourly` attribute (list of 24 values), plus
+The **Heute Rest**, **Morgen** and **24h** sensors also carry a `forecast_hourly` attribute (list of 24 values), plus
 `confidence_low` / `confidence_high` (±1σ over the history window) — ready for ApexCharts and safety margins.
+On **Heute Rest** the list is the whole of today, 00:00–23:00; on **Morgen** tomorrow, 00:00–23:00; on **24h** the
+next 24 hours from now.
+
+With Solcast configured, **PV Prognose Heute** carries today's solar forecast the same way: `forecast_hourly`
+(24 values in kW, 00:00–23:00), plus `forecast_hourly_low` / `forecast_hourly_high` from Solcast's 10th and 90th
+percentile. An hour Solcast does not cover is `null`.
 
 ### Pairing with Auto-Charge
 
@@ -98,7 +104,7 @@ method: 24x7_profile        # or fallback_7d_mean / fallback_persistence / warmi
 days_of_history: 28
 base_load_only: true
 last_update: '2026-04-22T07:00:00+00:00'
-forecast_hourly: [0.25, 0.23, ..., 1.1]  # 24 values (Morgen/24h only)
+forecast_hourly: [0.25, 0.23, ..., 1.1]  # 24 values (Heute Rest/Morgen/24h)
 confidence_low: 18.4
 confidence_high: 23.1
 ```
@@ -339,18 +345,22 @@ action:
 
 ### 3. Limit Battery Discharge for Expensive Hours
 
+`number.battery_discharge_limit` stands for your inverter's own minimum-SOC entity — this integration does not
+create it. The value to write is the **Entladung Empfehlung** sensor's `ziel_entladungstiefe` attribute: the
+*Target/Hold SOC* from the options while prices are cheap, the *Min. SOC (expensive)* while they are expensive.
+If your inverter takes a depth of discharge instead of a SOC, write `100 -` that value (see example 5).
+
 ```yaml
 alias: "PV: Save battery for expensive hours"
 trigger:
   - platform: state
-    entity_id: binary_sensor.pv_management_entladung_begrenzen
-    to: "on"
+    entity_id: binary_sensor.pv_management_entladung_empfehlung
 action:
   - service: number.set_value
     target:
-      entity_id: number.battery_discharge_limit
+      entity_id: number.battery_discharge_limit  # your inverter's entity
     data:
-      value: "{{ states('sensor.pv_management_halte_soc') }}"
+      value: "{{ state_attr('binary_sensor.pv_management_entladung_empfehlung', 'ziel_entladungstiefe') }}"
 ```
 
 ### 4. GoodWe Auto-Charge

@@ -2026,12 +2026,31 @@ class AutoChargePVForecastSensor(BaseEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        return {
+        attrs: dict[str, Any] = {
             "threshold_kwh": self.ctrl.auto_charge_pv_threshold,
             "condition_met": self.ctrl._check_pv_condition(),
             "source": "Solcast" if self.ctrl.has_solcast_integration else "Manual",
             "description": f"Below {self.ctrl.auto_charge_pv_threshold} kWh = charge",
         }
+        # Today's hours from Solcast, 00:00-23:00, one value per hour in kW —
+        # the same shape as the load forecast's forecast_hourly, for charts.
+        rows = self.ctrl.solcast_hourly_forecast if self.ctrl.has_solcast_integration else None
+        if rows:
+            try:
+                from homeassistant.util import dt as dt_util
+                from .solcast import hours_of_day
+
+                today = dt_util.as_local(dt_util.utcnow()).date()
+                attrs["forecast_hourly"] = hours_of_day(rows, today, dt_util.as_local)
+                low = hours_of_day(rows, today, dt_util.as_local, "pv_estimate10")
+                high = hours_of_day(rows, today, dt_util.as_local, "pv_estimate90")
+                if any(v is not None for v in low):
+                    attrs["forecast_hourly_low"] = low
+                if any(v is not None for v in high):
+                    attrs["forecast_hourly_high"] = high
+            except Exception:
+                pass
+        return attrs
 
 
 class AutoChargePriceQuantileSensor(BaseEntity):
@@ -2596,6 +2615,29 @@ class LoadForecastTodayRestSensor(_ForecastBaseSensor):
     def native_value(self) -> float | None:
         fc = self.ctrl.forecaster
         return fc.forecast_today_rest() if fc is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        attrs = super().extra_state_attributes
+        fc = self.ctrl.forecaster
+        if fc is None:
+            return attrs
+        try:
+            from homeassistant.util import dt as dt_util
+            now = dt_util.as_local(dt_util.utcnow())
+            start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            # The whole of today, 00:00-23:00, so a chart has the day's profile
+            # without copying tomorrow's forecast over at midnight.
+            attrs["forecast_hourly"] = fc.hourly_forecast(24, now=start_today)
+            # The band belongs to the state: the hours still to come.
+            low, high = fc.confidence_band(24 - now.hour)
+            if low is not None:
+                attrs["confidence_low"] = low
+            if high is not None:
+                attrs["confidence_high"] = high
+        except Exception:
+            pass
+        return attrs
 
 
 class LoadForecastTomorrowSensor(_ForecastBaseSensor):
