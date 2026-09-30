@@ -2093,6 +2093,12 @@ class AutoChargePVForecastSensor(BaseEntity):
             "source": "Solcast" if self.ctrl.has_solcast_integration else "Manual",
             "description": f"Below {self.ctrl.auto_charge_pv_threshold} kWh = charge",
         }
+        if self.ctrl.has_solcast_integration:
+            # P50/P10-Gewichtung (Issue #18): 0 = P50, 1 = P10
+            p10 = self.ctrl.solcast_forecast_today_p10
+            attrs["p10_weight"] = self.ctrl.solcast_p10_weight
+            attrs["forecast_p50_kwh"] = round(self.ctrl.solcast_forecast_today_p50, 2)
+            attrs["forecast_p10_kwh"] = round(p10, 2) if p10 is not None else None
         # Today's hours from Solcast, 00:00-23:00, one value per hour in kW —
         # the same shape as the load forecast's forecast_hourly, for charts.
         rows = self.ctrl.solcast_hourly_forecast if self.ctrl.has_solcast_integration else None
@@ -2102,7 +2108,9 @@ class AutoChargePVForecastSensor(BaseEntity):
                 from .solcast import hours_of_day
 
                 today = dt_util.as_local(dt_util.utcnow()).date()
-                attrs["forecast_hourly"] = hours_of_day(rows, today, dt_util.as_local)
+                attrs["forecast_hourly"] = hours_of_day(
+                    rows, today, dt_util.as_local, weight=self.ctrl.solcast_p10_weight
+                )
                 low = hours_of_day(rows, today, dt_util.as_local, "pv_estimate10")
                 high = hours_of_day(rows, today, dt_util.as_local, "pv_estimate90")
                 if any(v is not None for v in low):

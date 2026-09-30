@@ -36,6 +36,9 @@ CONF_EPEX_QUANTILE_ENTITY: Final[str] = "epex_quantile_entity"
 
 # --- Solcast Integration ------------------------------------------------------
 CONF_SOLCAST_FORECAST_ENTITY: Final[str] = "solcast_forecast_entity"
+# Gewichtung P50 → P10 (0 = 100 % P50 wie bisher, 1 = 100 % P10, linear) — Issue #18
+CONF_SOLCAST_P10_WEIGHT: Final[str] = "solcast_p10_weight"
+DEFAULT_SOLCAST_P10_WEIGHT: Final[float] = 0.0
 
 # --- Option keys (can be changed later) ---------------------------------------
 CONF_ELECTRICITY_PRICE: Final[str] = "electricity_price"

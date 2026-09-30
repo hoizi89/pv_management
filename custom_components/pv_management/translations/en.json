@@ -141,12 +141,14 @@
         "data": {
           "epex_price_entity": "EPEX Spot Price",
           "epex_quantile_entity": "EPEX Quantile",
-          "solcast_forecast_entity": "Solcast Forecast"
+          "solcast_forecast_entity": "Solcast Forecast",
+          "solcast_p10_weight": "Solcast weighting P50 → P10"
         },
         "data_description": {
           "epex_price_entity": "Current EPEX Spot electricity price sensor",
           "epex_quantile_entity": "EPEX Quantile (0=cheapest, 1=most expensive price of the day)",
-          "solcast_forecast_entity": "Solcast PV forecast for today in kWh"
+          "solcast_forecast_entity": "Solcast PV forecast for today in kWh",
+          "solcast_p10_weight": "0 = 100 % P50 (default, previous behaviour), 1 = 100 % P10 (cautious forecast), linear in between. Applies to the daily forecast, auto-charge and PV tips. If Solcast provides no P10 values, P50 is used."
         }
       },
       "amortisation": {

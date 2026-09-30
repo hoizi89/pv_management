@@ -21,6 +21,7 @@ from .const import (
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD, CONF_SAVINGS_OFFSET,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
+    CONF_SOLCAST_P10_WEIGHT, DEFAULT_SOLCAST_P10_WEIGHT,
     CONF_AUTO_CHARGE_WINTER_ONLY, CONF_AUTO_CHARGE_PV_THRESHOLD, CONF_AUTO_CHARGE_PRICE_QUANTILE,
     CONF_AUTO_CHARGE_MIN_SOC, CONF_AUTO_CHARGE_MIN_PRICE_DIFF,
     CONF_AUTO_CHARGE_POWER,
@@ -376,6 +377,11 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 **self._optional_entity(CONF_EPEX_QUANTILE_ENTITY),
                 # Solcast
                 **self._optional_entity(CONF_SOLCAST_FORECAST_ENTITY),
+                # Gewichtung P50 → P10 (0 = P50 wie bisher, 1 = P10), Issue #18
+                vol.Optional(CONF_SOLCAST_P10_WEIGHT, default=self._get_val(CONF_SOLCAST_P10_WEIGHT, DEFAULT_SOLCAST_P10_WEIGHT)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+                    ),
             })
         )
 

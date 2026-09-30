@@ -25,6 +25,7 @@ from .const import (
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
+    CONF_SOLCAST_P10_WEIGHT, DEFAULT_SOLCAST_P10_WEIGHT,
     CONF_AUTO_CHARGE_ENABLED, CONF_AUTO_CHARGE_WINTER_ONLY, CONF_AUTO_CHARGE_PV_THRESHOLD,
     CONF_AUTO_CHARGE_PRICE_QUANTILE, CONF_AUTO_CHARGE_MIN_SOC,
     CONF_AUTO_CHARGE_MIN_PRICE_DIFF, CONF_AUTO_CHARGE_POWER,
@@ -63,6 +64,7 @@ from .const import (
     CONF_SHIFTABLE_LOAD_ENTITY,
 )
 from . import calc
+from . import solcast
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -141,8 +143,10 @@ class PVManagementController:
         self._epex_price_forecast: list[dict] = []  # Preisprognose aus data Attribut
 
         # Solcast Werte
-        self._solcast_forecast_today = 0.0  # kWh Prognose heute
+        self._solcast_forecast_today = 0.0  # kWh Prognose heute (State = P50)
         self._solcast_hourly_forecast: list[dict] = []  # Stündliche Prognose
+        # Attribute für die P50/P10-Gewichtung (estimate, estimate10, detailed*)
+        self._solcast_attributes: dict[str, Any] = {}
 
         # Letzte bekannte Preise (für Fallback wenn Sensor temporär nicht verfügbar)
         self._last_known_electricity_price: float | None = None
@@ -289,6 +293,10 @@ class PVManagementController:
 
         # Solcast Entity
         self.solcast_forecast_entity = opts.get(CONF_SOLCAST_FORECAST_ENTITY)
+        # Gewichtung P50 → P10 (0 = P50 wie bisher, 1 = P10), Issue #18
+        self.solcast_p10_weight = calc.clamp(
+            _num(opts, CONF_SOLCAST_P10_WEIGHT, DEFAULT_SOLCAST_P10_WEIGHT), 0.0, 1.0
+        )
 
         # Preis-Konfiguration
         self.electricity_price = _num(opts, CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)
@@ -747,8 +755,27 @@ class PVManagementController:
 
     @property
     def solcast_forecast_today(self) -> float:
-        """Solcast PV-Prognose für heute in kWh."""
-        return self._solcast_forecast_today
+        """Solcast PV-Prognose für heute in kWh — P50/P10 gemäß Gewichtung.
+
+        Gewichtung 0 (Default) = P50 wie bisher. Liefert Solcast keine
+        P10-Werte, wird auf P50 zurückgefallen.
+        """
+        value = solcast.day_total(
+            self._solcast_forecast_today, self._solcast_attributes, self.solcast_p10_weight
+        )
+        return self._solcast_forecast_today if value is None else value
+
+    @property
+    def solcast_forecast_today_p50(self) -> float:
+        """Solcast P50-Tagesprognose (ungewichtet)."""
+        p50, _ = solcast.day_estimates(self._solcast_forecast_today, self._solcast_attributes)
+        return self._solcast_forecast_today if p50 is None else p50
+
+    @property
+    def solcast_forecast_today_p10(self) -> float | None:
+        """Solcast P10-Tagesprognose, None wenn Solcast keine P10-Werte liefert."""
+        _, p10 = solcast.day_estimates(self._solcast_forecast_today, self._solcast_attributes)
+        return p10
 
     @property
     def solcast_hourly_forecast(self) -> list[dict]:
@@ -815,7 +842,7 @@ class PVManagementController:
 
     def _check_pv_condition(self) -> bool:
         """Prüft ob PV-Prognose unter Schwellwert ist."""
-        forecast = self._solcast_forecast_today if self.has_solcast_integration else self._pv_forecast
+        forecast = self.solcast_forecast_today if self.has_solcast_integration else self._pv_forecast
         return forecast < self.auto_charge_pv_threshold
 
     def _check_price_condition(self) -> bool:
@@ -1019,7 +1046,7 @@ class PVManagementController:
                 blocks.append("Kein Winter (nur Okt-März aktiv)")
 
         # PV-Prognose
-        forecast = self._solcast_forecast_today if self.has_solcast_integration else self._pv_forecast
+        forecast = self.solcast_forecast_today if self.has_solcast_integration else self._pv_forecast
         if forecast < self.auto_charge_pv_threshold:
             reasons.append(f"PV-Prognose niedrig ({forecast:.1f} kWh < {self.auto_charge_pv_threshold} kWh)")
         else:
@@ -1252,24 +1279,25 @@ class PVManagementController:
                 if not isinstance(entry, dict):
                     continue
 
-                # Solcast Format: period_start, pv_estimate (kW)
+                # Solcast Format: period_start, pv_estimate/pv_estimate10 (kW)
+                # → gewichtet nach P50/P10-Einstellung (ohne P10: P50)
                 period_start = entry.get("period_start")
-                power = entry.get("pv_estimate", 0)
+                power = solcast.row_estimate(entry, self.solcast_p10_weight)
 
-                if not period_start or power < min_power:
+                if not period_start or power is None or power < min_power:
                     continue
 
                 try:
                     if isinstance(period_start, str):
                         dt = datetime.fromisoformat(period_start.replace("Z", "+00:00"))
-                        # Konvertiere zu lokaler Zeit falls nötig
-                        if dt.tzinfo:
-                            dt = dt.replace(tzinfo=None)
-                        hour = dt.hour
-                    elif hasattr(period_start, 'hour'):
-                        hour = period_start.hour
+                    elif isinstance(period_start, datetime):
+                        dt = period_start
                     else:
                         continue
+                    # In lokale (HA-)Zeit wandeln statt die Zeitzone abzuschneiden
+                    if dt.tzinfo:
+                        dt = dt_util.as_local(dt)
+                    hour = dt.hour
 
                     hours_until = hour - current_hour
                     if hours_until <= 0:
@@ -1962,7 +1990,7 @@ class PVManagementController:
             score -= 1  # Nacht -> eher schlecht
 
         # === PV-Prognose (Solcast hat Priorität) ===
-        forecast = self._solcast_forecast_today if self.solcast_forecast_entity else self._pv_forecast
+        forecast = self.solcast_forecast_today if self.solcast_forecast_entity else self._pv_forecast
         if forecast > 0:
             if forecast >= 10:
                 score += 1  # Gute Prognose
@@ -2230,7 +2258,7 @@ class PVManagementController:
         elif hour < 6 or hour > 21:
             score -= 1
 
-        forecast = self._solcast_forecast_today if self.solcast_forecast_entity else self._pv_forecast
+        forecast = self.solcast_forecast_today if self.solcast_forecast_entity else self._pv_forecast
         if forecast > 0:
             if forecast >= 10:
                 score += 1
@@ -3033,6 +3061,13 @@ class PVManagementController:
         """Lädt Solcast Prognose aus dem 'detailedHourly' Attribut."""
         try:
             if state and state.attributes:
+                # Für die P50/P10-Gewichtung (Issue #18)
+                self._solcast_attributes = {
+                    key: state.attributes.get(key)
+                    for key in ("estimate", "estimate10", "estimate90",
+                                "detailedForecast", "detailedHourly")
+                    if state.attributes.get(key) is not None
+                }
                 hourly = state.attributes.get("detailedHourly")
                 if hourly and isinstance(hourly, list):
                     self._solcast_hourly_forecast = hourly
