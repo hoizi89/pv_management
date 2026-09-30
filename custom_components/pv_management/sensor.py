@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import MATCH_ALL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
@@ -457,6 +458,25 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
     IMPORTANT: This sensor stores the incrementally calculated values
     persistently so they survive restarts!
     """
+
+    # Die Tracking-Attribute dienen nur dem Restore (extra_restore_state_data)
+    # und blähen sonst bei jedem Update die Recorder-Datenbank auf.
+    _unrecorded_attributes = frozenset({
+        "tracked_self_consumption_kwh", "tracked_feed_in_kwh",
+        "accumulated_savings_self", "accumulated_earnings_feed", "first_seen_date",
+        "tracked_grid_import_kwh", "total_grid_import_cost",
+        "auto_charge_count", "auto_charge_total_hours", "auto_charge_total_kwh",
+        "auto_charge_estimated_savings",
+        "tracked_wp_kwh", "wp_first_seen_date",
+        "string_tracked_kwh", "string_first_seen_date", "string_peak_w",
+        "daily_grid_import_kwh", "daily_grid_import_cost", "daily_feed_in_earnings",
+        "daily_feed_in_kwh", "daily_reset_date",
+        "monthly_grid_import_kwh", "monthly_grid_import_cost",
+        "monthly_reset_month", "monthly_reset_year",
+        "benchmark_start_date", "benchmark_start_self_consumption",
+        "benchmark_start_grid_import", "benchmark_start_feed_in",
+        "monthly_buckets", "monthly_bucket_month", "calculation_method",
+    })
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -1152,6 +1172,8 @@ class InstallationCostSensor(BaseEntity):
 class ConfigurationDiagnosticSensor(BaseEntity):
     """Diagnostic sensor showing all configured sensors and their status."""
 
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
     def __init__(self, ctrl, name: str, entry: ConfigEntry):
         super().__init__(
             ctrl,
@@ -1319,6 +1341,10 @@ class ConsumptionRecommendationSensor(BaseEntity):
     Shows whether now is a good time to consume electricity.
     Based on: PV power, battery, electricity price, time of day, forecast.
     """
+
+    _unrecorded_attributes = frozenset({
+        "score_details", "config", "integrations", "epex_spot", "solcast",
+    })
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -2039,6 +2065,10 @@ class AutoChargePriceDiffSensor(BaseEntity):
 class AutoChargePVForecastSensor(BaseEntity):
     """PV forecast for today (for auto-charge decision)."""
 
+    _unrecorded_attributes = frozenset({
+        "forecast_hourly", "forecast_hourly_low", "forecast_hourly_high",
+    })
+
     def __init__(self, ctrl, name: str):
         super().__init__(
             ctrl,
@@ -2168,6 +2198,8 @@ class AutoChargeDiagnosticSensor(BaseEntity):
 
     Shows all relevant information about why charging/not charging.
     """
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
     def __init__(self, ctrl, name: str):
         super().__init__(
@@ -2578,6 +2610,10 @@ class BenchmarkHeatpumpComparisonSensor(BaseEntity):
 
 class _ForecastBaseSensor(BaseEntity):
     """Basis für Load-Forecast Sensoren. Liest aus ctrl.forecaster."""
+
+    _unrecorded_attributes = frozenset({
+        "forecast_hourly", "confidence_low", "confidence_high",
+    })
 
     def __init__(self, ctrl, name: str, key: str, icon: str = "mdi:chart-bell-curve"):
         super().__init__(

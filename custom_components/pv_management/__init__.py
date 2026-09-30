@@ -5,10 +5,11 @@ from datetime import datetime, date
 from typing import Any
 
 import asyncio
+import time
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback, Event
-from homeassistant.const import EVENT_STATE_CHANGED, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -67,6 +68,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # CO2 Faktor für deutschen Strommix (kg CO2 pro kWh)
 CO2_FACTOR_GRID = 0.4
+
+# Mindestabstand (s) zwischen Entity-Updates, die nur durch Leistungs-/SOC-
+# Sensoren ausgelöst werden (die melden oft im Sekundentakt).
+NOTIFY_MIN_INTERVAL = 10.0
 
 
 def _now() -> datetime:
@@ -226,6 +231,9 @@ class PVManagementController:
         # Gesetzt in async_stop(): danach keine Entity-Updates / Helper-Syncs mehr
         # (verhindert, dass ein alter Controller beim Reload noch in den Helper schreibt)
         self._stopping = False
+        # Drosselung von _notify_entities bei reinen Leistungs-Updates
+        self._last_notify_ts = 0.0
+        self._notify_handle = None
 
         # Load Forecast (optional, 24x7 Profile)
         self.forecaster = None  # LoadForecaster | None
@@ -2239,6 +2247,11 @@ class PVManagementController:
         """Informiert alle Entities über Zustandsänderungen."""
         if self._stopping:
             return
+        self._last_notify_ts = time.monotonic()
+        if self._notify_handle is not None:
+            # Ein geplantes gedrosseltes Update ist hiermit erledigt
+            self._notify_handle()
+            self._notify_handle = None
 
         # Tracke Auto-Charge Aktivität für Statistiken
         self.track_auto_charge_activity()
@@ -2255,6 +2268,45 @@ class PVManagementController:
         # Check for notifications
         self._check_milestones()
         self._check_monthly_summary()
+
+    def _request_notify(self) -> None:
+        """Gedrosseltes _notify_entities() für häufige Leistungs-/SOC-Updates.
+
+        Höchstens alle NOTIFY_MIN_INTERVAL Sekunden ein Update aller Entities —
+        sonst schreibt jeder Sekundenwert eines Leistungssensors ~80 Entity-
+        States (plus Helper-Sync) in den State-Machine/Recorder.
+        """
+        if self._stopping or self._notify_handle is not None:
+            return
+        elapsed = time.monotonic() - self._last_notify_ts
+        if elapsed >= NOTIFY_MIN_INTERVAL:
+            self._notify_entities()
+            return
+
+        from homeassistant.helpers.event import async_call_later
+
+        @callback
+        def _throttled(_now) -> None:
+            self._notify_handle = None
+            self._notify_entities()
+
+        self._notify_handle = async_call_later(
+            self.hass, NOTIFY_MIN_INTERVAL - elapsed, _throttled
+        )
+
+    def _tracked_entity_ids(self) -> list[str]:
+        """Alle Entities, deren State-Changes der Controller verarbeitet."""
+        ids = {
+            self.pv_production_entity, self.grid_export_entity,
+            self.grid_import_entity, self.consumption_entity,
+            self.battery_soc_entity, self.pv_power_entity,
+            self.house_power_entity, self.shiftable_load_entity,
+            self.pv_forecast_entity, self.epex_price_entity,
+            self.epex_quantile_entity, self.solcast_forecast_entity,
+            self.benchmark_heatpump_entity,
+        }
+        ids |= set(self._string_entity_ids) | set(self._string_power_entity_ids)
+        return sorted(i for i in ids if i)
 
     def _sync_to_helper(self) -> None:
         """Synchronisiert die Gesamtersparnis zum Helper."""
@@ -3451,12 +3503,19 @@ class PVManagementController:
             current_peak = self._string_peak_w.get(entity_id, 0.0)
             if value > current_peak:
                 self._string_peak_w[entity_id] = value
-                self._notify_entities()
+                self._request_notify()
 
         if changed:
             self._process_energy_update()
         elif recommendation_changed:
-            self._notify_entities()
+            if entity_id in (
+                self.battery_soc_entity, self.pv_power_entity,
+                self.house_power_entity, self.shiftable_load_entity,
+            ):
+                # Leistungs-/SOC-Sensoren melden oft sekündlich → gedrosselt
+                self._request_notify()
+            else:
+                self._notify_entities()
 
     async def async_start(self) -> None:
         """Startet das Tracking."""
@@ -3644,9 +3703,14 @@ class PVManagementController:
         def state_listener(event: Event):
             self._on_state_changed(event)
 
-        self._remove_listeners.append(
-            self.hass.bus.async_listen(EVENT_STATE_CHANGED, state_listener)
-        )
+        # Nur die konfigurierten Entities abonnieren statt JEDES State-Change-
+        # Event im ganzen HA zu filtern.
+        from homeassistant.helpers.event import async_track_state_change_event
+        tracked = self._tracked_entity_ids()
+        if tracked:
+            self._remove_listeners.append(
+                async_track_state_change_event(self.hass, tracked, state_listener)
+            )
 
         # --- Tages-/Monatswechsel pünktlich kurz nach Mitternacht (lokale Zeit)
         from homeassistant.helpers.event import async_track_time_change
@@ -3699,6 +3763,9 @@ class PVManagementController:
         # Zuerst das Flag setzen: ab jetzt keine Entity-Updates und keine
         # Helper-Syncs mehr — auch nicht aus noch laufenden Callbacks.
         self._stopping = True
+        if self._notify_handle is not None:
+            self._notify_handle()
+            self._notify_handle = None
         for remove in self._remove_listeners:
             try:
                 remove()  # State-Listener, Intervalle und async_call_later-Handles
@@ -3819,16 +3886,27 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
                 old_benchmark = ctrl.benchmark_enabled
                 old_heatpump = ctrl.benchmark_heatpump
                 old_forecast = ctrl.forecast_enabled
+                # Entity-Wechsel: State-Listener, Zählerstände und die Menge
+                # der angelegten Sensoren hängen an den konfigurierten Entities.
+                old_entities = ctrl._tracked_entity_ids()
+                old_counters = ctrl._counter_entities()
+                old_strings = list(ctrl.pv_strings)
 
                 ctrl._load_options()
-                ctrl._notify_entities()
                 _LOGGER.info("PV Management Optionen aktualisiert")
 
-                # Reload if benchmark enabled/disabled, heatpump toggled, or forecast toggled
-                if (ctrl.benchmark_enabled != old_benchmark
-                        or ctrl.benchmark_heatpump != old_heatpump
-                        or ctrl.forecast_enabled != old_forecast):
-                    _LOGGER.info("Strukturelle Änderung (Benchmark/Forecast), reloading integration")
+                needs_reload = (
+                    ctrl.benchmark_enabled != old_benchmark
+                    or ctrl.benchmark_heatpump != old_heatpump
+                    or ctrl.forecast_enabled != old_forecast
+                    or ctrl._tracked_entity_ids() != old_entities
+                    or ctrl._counter_entities() != old_counters
+                    or list(ctrl.pv_strings) != old_strings
+                )
+                if needs_reload:
+                    _LOGGER.info("Strukturelle Änderung (Entities/Benchmark/Forecast), reloading integration")
                     await hass.config_entries.async_reload(entry.entry_id)
+                else:
+                    ctrl._notify_entities()
     except Exception as e:
         _LOGGER.error("Fehler beim Aktualisieren der Optionen: %s", e)
