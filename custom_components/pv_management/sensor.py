@@ -547,7 +547,7 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "baseline_pv_production_kwh", "baseline_grid_export_kwh",
                 "baseline_self_consumption_kwh", "baseline_feed_in_kwh",
                 "baseline_consumption_kwh", "baseline_grid_import_kwh",
-                "counter_entities", "saved_at",
+                "counter_entities", "saved_at", "monthly_summary_sent",
             ):
                 if key in attrs:
                     restore_data[key] = attrs.get(key)
@@ -605,12 +605,14 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "daily_grid_import_cost": round(self.ctrl._daily_grid_import_cost, 4),
             "daily_feed_in_earnings": round(self.ctrl._daily_feed_in_earnings, 4),
             "daily_feed_in_kwh": round(self.ctrl._daily_feed_in_kwh, 4),
-            "daily_reset_date": date.today().isoformat(),
+            # Periode, zu der die Werte gehören (nicht "heute" — sonst würden
+            # Vortageswerte nach einem Neustart als heutige wiederhergestellt)
+            "daily_reset_date": self.ctrl.daily_tracking_date.isoformat(),
             # Monthly tracking
             "monthly_grid_import_kwh": round(self.ctrl._monthly_grid_import_kwh, 4),
             "monthly_grid_import_cost": round(self.ctrl._monthly_grid_import_cost, 4),
-            "monthly_reset_month": date.today().month,
-            "monthly_reset_year": date.today().year,
+            "monthly_reset_month": self.ctrl.monthly_tracking_period[1],
+            "monthly_reset_year": self.ctrl.monthly_tracking_period[0],
             # Benchmark Snapshot
             "benchmark_start_date": self.ctrl._benchmark_start_date.isoformat() if self.ctrl._benchmark_start_date else None,
             "benchmark_start_self_consumption": round(self.ctrl._benchmark_start_self_consumption, 4),

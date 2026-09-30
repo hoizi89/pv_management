@@ -170,6 +170,7 @@ class PVManagementController:
         self._monthly_grid_import_cost = 0.0
         self._monthly_grid_import_kwh = 0.0
         self._monthly_tracking_month: int | None = None  # 1-12
+        self._monthly_tracking_year: int | None = None
 
         # Auto-Charge Statistiken
         self._auto_charge_count = 0  # Anzahl Aktivierungen
@@ -190,7 +191,10 @@ class PVManagementController:
 
         # Notification Tracking (verhindert Spam)
         self._milestones_fired: set[int] = set()
-        self._monthly_summary_month: int | None = None
+        # Monatsbericht: Werte des abgeschlossenen Monats werden beim Monatswechsel
+        # eingefroren (sonst meldet der Bericht am 1. die frisch genullten Werte).
+        self._pending_month_report: dict[str, Any] | None = None
+        self._monthly_summary_sent: str | None = None  # "YYYY-MM" (persistiert)
 
         # Wärmepumpe Delta-Tracking (persistent über Neustarts)
         self._last_wp_kwh: float | None = None
@@ -2332,25 +2336,24 @@ class PVManagementController:
                 _LOGGER.info("Meilenstein erreicht: %s", message)
 
     def _check_monthly_summary(self) -> None:
-        """Sendet monatliche Zusammenfassung am 1. des Monats."""
-        today = _today()
+        """Sendet die Zusammenfassung des abgeschlossenen Monats (einmal pro Monat).
 
-        # Nur am 1. des Monats und nur einmal pro Monat
-        if today.day != 1:
+        Die Monatswerte werden in _roll_periods() bzw. beim Restore eingefroren,
+        bevor sie für den neuen Monat genullt werden. Der gesendete Monat wird
+        persistiert — ein Neustart am 1. löst keinen zweiten Bericht aus.
+        """
+        report = self._pending_month_report
+        if not report:
             return
-        if self._monthly_summary_month == today.month:
+        key = f"{report['year']:04d}-{report['month']:02d}"
+        self._pending_month_report = None
+        if self._monthly_summary_sent == key:
             return
+        self._monthly_summary_sent = key
 
-        self._monthly_summary_month = today.month
-
-        # Berechne Vormonat
-        from datetime import timedelta
-        last_month = today - timedelta(days=1)
-        month_name = last_month.strftime("%B %Y")
-
-        # Monatliche Werte (aus dem Tracking)
-        monthly_kwh = self._monthly_grid_import_kwh
-        monthly_cost = self._monthly_grid_import_cost
+        month_name = date(report["year"], report["month"], 1).strftime("%B %Y")
+        monthly_kwh = report["grid_import_kwh"]
+        monthly_cost = report["grid_import_cost"]
 
         message = f"PV-Bericht {month_name}: {monthly_kwh:.0f} kWh Netzbezug, {self.amortisation_percent:.1f}% amortisiert"
 
@@ -2364,6 +2367,17 @@ class PVManagementController:
             "message": message,
         })
         _LOGGER.info("Monatliche Zusammenfassung: %s", message)
+
+    def _freeze_month_report(self, year: int, month: int, kwh: float, cost: float) -> None:
+        """Merkt sich die Werte eines abgeschlossenen Monats für den Monatsbericht."""
+        if self._monthly_summary_sent == f"{year:04d}-{month:02d}":
+            return
+        self._pending_month_report = {
+            "year": year,
+            "month": month,
+            "grid_import_kwh": kwh,
+            "grid_import_cost": cost,
+        }
 
     def restore_state(self, data: dict[str, Any]) -> None:
         """Stellt den gespeicherten Zustand wieder her."""
@@ -2449,21 +2463,41 @@ class PVManagementController:
                 _LOGGER.warning("Konnte daily_reset_date nicht parsen: %s", e)
 
         # Monthly: Prüfen ob gleicher Monat
+        sent = data.get("monthly_summary_sent")
+        if isinstance(sent, str):
+            self._monthly_summary_sent = sent
         monthly_reset_month = data.get("monthly_reset_month")
         monthly_reset_year = data.get("monthly_reset_year")
         if monthly_reset_month is not None and monthly_reset_year is not None:
             try:
-                if int(monthly_reset_month) == today.month and int(monthly_reset_year) == today.year:
+                saved_month, saved_year = int(monthly_reset_month), int(monthly_reset_year)
+                if today.month > 1:
+                    prev_year, prev_month = today.year, today.month - 1
+                else:
+                    prev_year, prev_month = today.year - 1, 12
+                if saved_month == today.month and saved_year == today.year:
                     # Gleicher Monat - Werte wiederherstellen
                     self._monthly_grid_import_kwh = safe_float(data.get("monthly_grid_import_kwh"))
                     self._monthly_grid_import_cost = safe_float(data.get("monthly_grid_import_cost"))
                     self._monthly_tracking_month = today.month
+                    self._monthly_tracking_year = today.year
                     _LOGGER.info(
                         "Monthly Strompreis-Tracking wiederhergestellt: %.2f kWh, %.2f €",
                         self._monthly_grid_import_kwh, self._monthly_grid_import_cost
                     )
                 else:
-                    # Neuer Monat - bei 0 starten
+                    # Neuer Monat - bei 0 starten. War es der Vormonat, dessen
+                    # Werte für den (noch nicht gesendeten) Monatsbericht merken.
+                    if (saved_year, saved_month) == (prev_year, prev_month):
+                        self._freeze_month_report(
+                            saved_year, saved_month,
+                            safe_float(data.get("monthly_grid_import_kwh")),
+                            safe_float(data.get("monthly_grid_import_cost")),
+                        )
+                    self._monthly_grid_import_kwh = 0.0
+                    self._monthly_grid_import_cost = 0.0
+                    self._monthly_tracking_month = today.month
+                    self._monthly_tracking_year = today.year
                     _LOGGER.info("Neuer Monat seit letztem Speichern, Monthly-Werte zurückgesetzt")
             except (ValueError, TypeError) as e:
                 _LOGGER.warning("Konnte monthly_reset Daten nicht parsen: %s", e)
@@ -2710,6 +2744,19 @@ class PVManagementController:
         self._baseline_grid_import_kwh = None
         self._restored_saved_at = None
 
+    @property
+    def daily_tracking_date(self) -> date:
+        """Tag, zu dem die Tageswerte gehören (für die Persistierung)."""
+        return self._daily_tracking_date or _today()
+
+    @property
+    def monthly_tracking_period(self) -> tuple[int, int]:
+        """(Jahr, Monat), zu dem die Monatswerte gehören (für die Persistierung)."""
+        if self._monthly_tracking_month is not None and self._monthly_tracking_year is not None:
+            return self._monthly_tracking_year, self._monthly_tracking_month
+        today = _today()
+        return today.year, today.month
+
     def get_persist_extra(self) -> dict[str, Any]:
         """Zusätzliche Restore-Daten, die NICHT als Attribut im Recorder landen.
 
@@ -2728,6 +2775,7 @@ class PVManagementController:
             "baseline_consumption_kwh": self._baseline_consumption_kwh,
             "baseline_grid_import_kwh": self._baseline_grid_import_kwh,
             "counter_entities": self._counter_entities(),
+            "monthly_summary_sent": self._monthly_summary_sent,
             "saved_at": _now().isoformat(),
         }
 
@@ -2980,10 +3028,17 @@ class PVManagementController:
             self._daily_feed_in_earnings = 0.0
             self._daily_feed_in_kwh = 0.0
             self._daily_tracking_date = today
-        if self._monthly_tracking_month != today.month:
+        if (self._monthly_tracking_month, self._monthly_tracking_year) != (today.month, today.year):
+            if self._monthly_tracking_month is not None and self._monthly_tracking_year is not None:
+                # Abgeschlossenen Monat für den Monatsbericht einfrieren
+                self._freeze_month_report(
+                    self._monthly_tracking_year, self._monthly_tracking_month,
+                    self._monthly_grid_import_kwh, self._monthly_grid_import_cost,
+                )
             self._monthly_grid_import_cost = 0.0
             self._monthly_grid_import_kwh = 0.0
             self._monthly_tracking_month = today.month
+            self._monthly_tracking_year = today.year
 
     @callback
     def _on_midnight(self, _now=None) -> None:
