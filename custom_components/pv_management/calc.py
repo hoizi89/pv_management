@@ -45,3 +45,24 @@ def start_of_day(now: datetime) -> datetime:
 def start_of_month(now: datetime) -> datetime:
     """Beginn des lokalen Monats von ``now``."""
     return start_of_day(now).replace(day=1)
+
+
+# Obergrenze fuer ein einzelnes Energie-Delta im laufenden Betrieb (kWh)
+MAX_DELTA_KWH = 50.0
+
+
+def max_plausible_delta_kwh(
+    gap_hours: float | None,
+    power_kw: float,
+    base: float = MAX_DELTA_KWH,
+) -> float:
+    """Obergrenze fuer ein Energie-Delta, das ohne Re-Baseline verbucht wird.
+
+    Im laufenden Betrieb gilt ``base``. Nach einem Neustart mit persistierten
+    Zaehlerstaenden enthaelt das erste Delta die komplette Energie der
+    HA-Downtime - dann darf es um ``power_kw * gap_hours`` groesser sein,
+    sonst wuerde die Downtime-Energie verworfen.
+    """
+    if not gap_hours or gap_hours <= 0:
+        return base
+    return base + max(power_kw, 0.0) * gap_hours

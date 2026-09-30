@@ -627,9 +627,14 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     # nicht die alte Gesamtersparnis wieder draufrechnen.
                     ctrl._helper_restore_value = None
                     ctrl.savings_offset = ctrl._configured_savings_offset
+                    # Alte Baselines verwerfen — sonst rechnet das nächste
+                    # Update die alten Totals wieder hoch, falls die
+                    # Initialisierung mangels verfügbarer Sensoren ausfällt.
+                    ctrl._clear_counter_state()
                     ctrl._initialize_from_sensors()
                     ctrl._last_pv_production_kwh = ctrl._pv_production_kwh
                     ctrl._last_grid_export_kwh = ctrl._grid_export_kwh
+                    ctrl._last_grid_import_kwh = ctrl._grid_import_kwh
                     ctrl._notify_entities()
                     _LOGGER.info("Reset via Settings: Amortisation re-initialized")
                 elif target == "grid_import":

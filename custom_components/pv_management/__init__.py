@@ -180,6 +180,10 @@ class PVManagementController:
         self._auto_charge_was_active = False  # War Auto-Charge im letzten Zyklus aktiv?
         self._is_auto_charging = False  # Hysterese: Läuft gerade ein Ladevorgang?
 
+        # Zeitpunkt der letzten Persistierung (aus Restore) — erlaubt beim ersten
+        # Delta nach dem Neustart die Energie der HA-Downtime zu verbuchen.
+        self._restored_saved_at: datetime | None = None
+
         # Flag ob Werte aus Restore geladen wurden
         self._restored = False
         self._first_seen_date: date | None = None
@@ -2401,6 +2405,20 @@ class PVManagementController:
         self._baseline_consumption_kwh = safe_float_or_none(data.get("baseline_consumption_kwh"))
         self._baseline_grid_import_kwh = safe_float_or_none(data.get("baseline_grid_import_kwh"))
 
+        # Zählerstände gehören zu bestimmten Sensoren — wurde inzwischen ein
+        # anderer Sensor konfiguriert, sind sie wertlos (sonst Fantasie-Delta).
+        stored_entities = data.get("counter_entities")
+        if isinstance(stored_entities, dict) and stored_entities != self._counter_entities():
+            _LOGGER.info(
+                "Energie-Sensoren seit letztem Speichern geändert — "
+                "gespeicherte Zählerstände/Baselines werden verworfen"
+            )
+            self._clear_counter_state()
+        elif stored_entities is not None:
+            saved_at = data.get("saved_at")
+            parsed = dt_util.parse_datetime(saved_at) if isinstance(saved_at, str) else None
+            self._restored_saved_at = parsed
+
         # Strompreis-Tracking Daten wiederherstellen
         self._tracked_grid_import_kwh = safe_float(data.get("tracked_grid_import_kwh"))
         self._total_grid_import_cost = safe_float(data.get("total_grid_import_cost"))
@@ -2668,6 +2686,50 @@ class PVManagementController:
 
         # Benachrichtige alle Entities über die initialisierten Werte
         self._notify_entities()
+
+    def _counter_entities(self) -> dict[str, str | None]:
+        """Die Energie-Sensoren, zu denen _last_*/baseline_* gehören."""
+        return {
+            "pv": self.pv_production_entity,
+            "export": self.grid_export_entity,
+            "import": self.grid_import_entity,
+            "consumption": self.consumption_entity,
+        }
+
+    def _clear_counter_state(self) -> None:
+        """Verwirft Zählerstände und Baselines (werden beim nächsten Update neu gesetzt)."""
+        self._last_pv_production_kwh = None
+        self._last_grid_export_kwh = None
+        self._last_grid_import_kwh = None
+        self._last_consumption_kwh = None
+        self._baseline_pv_production_kwh = None
+        self._baseline_grid_export_kwh = None
+        self._baseline_self_consumption_kwh = None
+        self._baseline_feed_in_kwh = None
+        self._baseline_consumption_kwh = None
+        self._baseline_grid_import_kwh = None
+        self._restored_saved_at = None
+
+    def get_persist_extra(self) -> dict[str, Any]:
+        """Zusätzliche Restore-Daten, die NICHT als Attribut im Recorder landen.
+
+        Zählerstände + Baselines überleben so einen Neustart; die Energie, die
+        während der HA-Downtime anfällt, wird beim ersten Update nachgebucht.
+        """
+        return {
+            "last_pv_production_kwh": self._last_pv_production_kwh,
+            "last_grid_export_kwh": self._last_grid_export_kwh,
+            "last_grid_import_kwh": self._last_grid_import_kwh,
+            "last_consumption_kwh": self._last_consumption_kwh,
+            "baseline_pv_production_kwh": self._baseline_pv_production_kwh,
+            "baseline_grid_export_kwh": self._baseline_grid_export_kwh,
+            "baseline_self_consumption_kwh": self._baseline_self_consumption_kwh,
+            "baseline_feed_in_kwh": self._baseline_feed_in_kwh,
+            "baseline_consumption_kwh": self._baseline_consumption_kwh,
+            "baseline_grid_import_kwh": self._baseline_grid_import_kwh,
+            "counter_entities": self._counter_entities(),
+            "saved_at": _now().isoformat(),
+        }
 
     def get_state_for_storage(self) -> dict[str, Any]:
         """Gibt den zu speichernden Zustand zurück."""
@@ -2954,6 +3016,18 @@ class PVManagementController:
         current_export = self._grid_export_kwh
         current_import = self._grid_import_kwh
 
+        # Erstes Update nach einem Neustart mit persistierten Zählerständen:
+        # Downtime-Dauer merken (lockert die Delta-Obergrenze einmalig).
+        restore_gap_hours: float | None = None
+        if self._restored_saved_at is not None:
+            try:
+                restore_gap_hours = max(
+                    0.0, (_now() - self._restored_saved_at).total_seconds() / 3600.0
+                )
+            except (TypeError, ValueError):
+                restore_gap_hours = None
+            self._restored_saved_at = None
+
         # Init-Guard: Wenn _last_* None → setze und return.
         if (self._last_pv_production_kwh is None
                 or self._last_grid_export_kwh is None
@@ -3045,10 +3119,19 @@ class PVManagementController:
         delta_import = current_import - self._last_grid_import_kwh
 
         # Sanity: unrealistische Sprünge ignorieren + re-baseline
-        MAX_DELTA_KWH = 50.0
-        if (abs(effective_delta_self) > MAX_DELTA_KWH
-                or abs(effective_delta_feed_in) > MAX_DELTA_KWH
-                or abs(delta_import) > MAX_DELTA_KWH):
+        # Nach einem Neustart enthält das erste Delta die Energie der Downtime →
+        # Grenze um (Leistung × Downtime) erweitern, damit sie nicht verloren geht.
+        max_delta_kwh = calc.max_plausible_delta_kwh(
+            restore_gap_hours, max(self.pv_peak_power / 1000.0, 30.0)
+        )
+        if restore_gap_hours:
+            _LOGGER.debug(
+                "Erstes Update nach Neustart (%.1f h Pause): Delta-Grenze %.0f kWh",
+                restore_gap_hours, max_delta_kwh,
+            )
+        if (abs(effective_delta_self) > max_delta_kwh
+                or abs(effective_delta_feed_in) > max_delta_kwh
+                or abs(delta_import) > max_delta_kwh):
             _LOGGER.warning(
                 "Unrealistic delta detected (self=%.1f, feed=%.1f, import=%.1f) — re-baselining",
                 effective_delta_self, effective_delta_feed_in, delta_import,
