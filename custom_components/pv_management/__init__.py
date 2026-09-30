@@ -199,9 +199,12 @@ class PVManagementController:
         self._monthly_buckets: dict[int, dict[str, float]] = {}
         self._monthly_bucket_month: int | None = None
 
-        # Listener
+        # Listener (inkl. Cancel-Handles von async_call_later)
         self._remove_listeners = []
         self._entity_listeners = []
+        # Gesetzt in async_stop(): danach keine Entity-Updates / Helper-Syncs mehr
+        # (verhindert, dass ein alter Controller beim Reload noch in den Helper schreibt)
+        self._stopping = False
 
         # Load Forecast (optional, 24x7 Profile)
         self.forecaster = None  # LoadForecaster | None
@@ -2185,6 +2188,9 @@ class PVManagementController:
 
     def _notify_entities(self) -> None:
         """Informiert alle Entities über Zustandsänderungen."""
+        if self._stopping:
+            return
+
         # Tracke Auto-Charge Aktivität für Statistiken
         self.track_auto_charge_activity()
 
@@ -2203,7 +2209,7 @@ class PVManagementController:
 
     def _sync_to_helper(self) -> None:
         """Synchronisiert die Gesamtersparnis zum Helper."""
-        if not self.amortisation_helper:
+        if not self.amortisation_helper or self._stopping:
             return
         # Race-Schutz: Nicht syncen bevor Restore abgeschlossen — sonst
         # überschreibt total_savings=0 den persistierten Helper-Wert.
@@ -2554,7 +2560,9 @@ class PVManagementController:
             self._notify_entities()
 
         from homeassistant.helpers.event import async_call_later
-        async_call_later(self.hass, 5.0, delayed_restore_notify)
+        self._remove_listeners.append(
+            async_call_later(self.hass, 5.0, delayed_restore_notify)
+        )
 
     def _initialize_from_sensors(self) -> None:
         """
@@ -3413,7 +3421,9 @@ class PVManagementController:
 
         # Warte 60 Sekunden bevor wir prüfen - Inverter-Integration braucht oft länger
         from homeassistant.helpers.event import async_call_later
-        async_call_later(self.hass, 60.0, delayed_init_check)
+        self._remove_listeners.append(
+            async_call_later(self.hass, 60.0, delayed_init_check)
+        )
 
         @callback
         def state_listener(event: Event):
@@ -3463,8 +3473,14 @@ class PVManagementController:
 
     async def async_stop(self) -> None:
         """Stoppt das Tracking."""
+        # Zuerst das Flag setzen: ab jetzt keine Entity-Updates und keine
+        # Helper-Syncs mehr — auch nicht aus noch laufenden Callbacks.
+        self._stopping = True
         for remove in self._remove_listeners:
-            remove()
+            try:
+                remove()  # State-Listener, Intervalle und async_call_later-Handles
+            except Exception as e:
+                _LOGGER.debug("Listener-Remove Fehler (ignoriert): %s", e)
         self._remove_listeners.clear()
         self._entity_listeners.clear()  # Alle Entity-Listener entfernen
         if self.forecaster is not None:
@@ -3546,18 +3562,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             handle_reset_grid_import,
         )
 
-    entry.add_update_listener(_async_update_listener)
+    # async_on_unload: Listener wird beim Entladen entfernt — sonst hängt nach
+    # jedem Reload ein weiterer Update-Listener am Entry.
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Entlädt die Integration."""
     try:
+        # Controller ZUERST stoppen: Listener/Timer weg, _stopping gesetzt.
+        # Sonst kann der alte Controller zwischen Plattform-Unload und Stop
+        # noch Events verarbeiten und in den Helper syncen (Reload-Race).
+        ctrl = hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get(DATA_CTRL)
+        if ctrl:
+            await ctrl.async_stop()
         unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-        if unload_ok and DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
-            ctrl = hass.data[DOMAIN][entry.entry_id].get(DATA_CTRL)
-            if ctrl:
-                await ctrl.async_stop()
+        if unload_ok and DOMAIN in hass.data:
             hass.data[DOMAIN].pop(entry.entry_id, None)
         return unload_ok
     except Exception as e:
