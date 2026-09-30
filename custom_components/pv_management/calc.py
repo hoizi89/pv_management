@@ -185,3 +185,18 @@ def forecast_entry_price_eur(entry: dict) -> float | None:
             return value
         return value / 100.0
     return None
+
+
+def clamp(value: float, low=None, high=None) -> float:
+    """Begrenzt ``value`` auf [low, high]; ungueltige/fehlende Grenzen werden ignoriert."""
+    try:
+        if low is not None:
+            value = max(value, float(low))
+    except (TypeError, ValueError):
+        pass
+    try:
+        if high is not None:
+            value = min(value, float(high))
+    except (TypeError, ValueError):
+        pass
+    return value

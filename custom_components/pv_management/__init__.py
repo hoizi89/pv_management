@@ -84,6 +84,17 @@ def _today() -> date:
     return dt_util.now().date()
 
 
+def _num(opts: dict, key: str, default: float) -> float:
+    """Numerische Option lesen; None/ungültig → Default (statt TypeError)."""
+    value = opts.get(key, default)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 class PVManagementController:
     """
     Controller für PV-Management.
@@ -233,6 +244,7 @@ class PVManagementController:
         self._stopping = False
         # Drosselung von _notify_entities bei reinen Leistungs-Updates
         self._last_notify_ts = 0.0
+        self._helper_range_warned = False
         self._notify_handle = None
 
         # Load Forecast (optional, 24x7 Profile)
@@ -259,7 +271,7 @@ class PVManagementController:
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
         self.pv_power_entity = opts.get(CONF_PV_POWER_ENTITY)
         self.pv_forecast_entity = opts.get(CONF_PV_FORECAST_ENTITY)
-        self.battery_capacity = opts.get(CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)
+        self.battery_capacity = _num(opts, CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)
         self.battery_power_entity = opts.get(CONF_BATTERY_POWER_ENTITY)
         self.battery_power_invert = opts.get(CONF_BATTERY_POWER_INVERT, DEFAULT_BATTERY_POWER_INVERT)
         self.grid_power_entity = opts.get(CONF_GRID_POWER_ENTITY)
@@ -279,27 +291,27 @@ class PVManagementController:
         self.solcast_forecast_entity = opts.get(CONF_SOLCAST_FORECAST_ENTITY)
 
         # Preis-Konfiguration
-        self.electricity_price = opts.get(CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)
+        self.electricity_price = _num(opts, CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)
         self.electricity_price_entity = opts.get(CONF_ELECTRICITY_PRICE_ENTITY)
         self.electricity_price_unit = opts.get(CONF_ELECTRICITY_PRICE_UNIT, DEFAULT_ELECTRICITY_PRICE_UNIT)
-        self.feed_in_tariff = opts.get(CONF_FEED_IN_TARIFF, DEFAULT_FEED_IN_TARIFF)
+        self.feed_in_tariff = _num(opts, CONF_FEED_IN_TARIFF, DEFAULT_FEED_IN_TARIFF)
         self.feed_in_tariff_entity = opts.get(CONF_FEED_IN_TARIFF_ENTITY)
         self.feed_in_tariff_unit = opts.get(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)
 
         # Kosten und Datum
-        self.installation_cost = opts.get(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)
+        self.installation_cost = _num(opts, CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)
         self.installation_date = opts.get(CONF_INSTALLATION_DATE)
-        self._configured_savings_offset = opts.get(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)
+        self._configured_savings_offset = _num(opts, CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)
 
         # Empfehlungs-Schwellwerte
-        self.battery_soc_high = opts.get(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)
-        self.battery_soc_low = opts.get(CONF_BATTERY_SOC_LOW, DEFAULT_BATTERY_SOC_LOW)
-        self.price_high_threshold = opts.get(CONF_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_HIGH_THRESHOLD)
-        self.price_low_threshold = opts.get(CONF_PRICE_LOW_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD)
-        self.pv_power_high = opts.get(CONF_PV_POWER_HIGH, DEFAULT_PV_POWER_HIGH)
+        self.battery_soc_high = _num(opts, CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)
+        self.battery_soc_low = _num(opts, CONF_BATTERY_SOC_LOW, DEFAULT_BATTERY_SOC_LOW)
+        self.price_high_threshold = _num(opts, CONF_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_HIGH_THRESHOLD)
+        self.price_low_threshold = _num(opts, CONF_PRICE_LOW_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD)
+        self.pv_power_high = _num(opts, CONF_PV_POWER_HIGH, DEFAULT_PV_POWER_HIGH)
         # User-Override; None = auto-derive aus PV-Strings (kWp oder gemessener Peak)
         self._configured_pv_peak_power = opts.get(CONF_PV_PEAK_POWER)
-        self.winter_base_load = opts.get(CONF_WINTER_BASE_LOAD, DEFAULT_WINTER_BASE_LOAD)
+        self.winter_base_load = _num(opts, CONF_WINTER_BASE_LOAD, DEFAULT_WINTER_BASE_LOAD)
 
         # Gemeinsame Batterie-Einstellung (für Auto-Charge UND Entlade-Steuerung)
         # Migration: Alte Einstellungen werden auch unterstützt
@@ -313,28 +325,28 @@ class PVManagementController:
         # Auto-Charge Einstellungen
         self.auto_charge_enabled = opts.get(CONF_AUTO_CHARGE_ENABLED, DEFAULT_AUTO_CHARGE_ENABLED)
         self.auto_charge_winter_only = opts.get(CONF_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_WINTER_ONLY)
-        self.auto_charge_pv_threshold = opts.get(CONF_AUTO_CHARGE_PV_THRESHOLD, DEFAULT_AUTO_CHARGE_PV_THRESHOLD)
-        self.auto_charge_price_quantile = opts.get(CONF_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_PRICE_QUANTILE)
-        self.auto_charge_min_soc = opts.get(CONF_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_MIN_SOC)
-        self.auto_charge_min_price_diff = opts.get(CONF_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF)
-        self.auto_charge_power = opts.get(CONF_AUTO_CHARGE_POWER, DEFAULT_AUTO_CHARGE_POWER)
+        self.auto_charge_pv_threshold = _num(opts, CONF_AUTO_CHARGE_PV_THRESHOLD, DEFAULT_AUTO_CHARGE_PV_THRESHOLD)
+        self.auto_charge_price_quantile = _num(opts, CONF_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_PRICE_QUANTILE)
+        self.auto_charge_min_soc = _num(opts, CONF_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_MIN_SOC)
+        self.auto_charge_min_price_diff = _num(opts, CONF_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF)
+        self.auto_charge_power = _num(opts, CONF_AUTO_CHARGE_POWER, DEFAULT_AUTO_CHARGE_POWER)
 
         # Discharge Control Einstellungen (Entlade-Steuerung)
         self.discharge_enabled = opts.get(CONF_DISCHARGE_ENABLED, DEFAULT_DISCHARGE_ENABLED)
         self.discharge_winter_only = opts.get(CONF_DISCHARGE_WINTER_ONLY, DEFAULT_DISCHARGE_WINTER_ONLY)
-        self.discharge_price_quantile = opts.get(CONF_DISCHARGE_PRICE_QUANTILE, DEFAULT_DISCHARGE_PRICE_QUANTILE)
-        self.discharge_allow_soc = opts.get(CONF_DISCHARGE_ALLOW_SOC, DEFAULT_DISCHARGE_ALLOW_SOC)
-        self.discharge_summer_soc = opts.get(CONF_DISCHARGE_SUMMER_SOC, DEFAULT_DISCHARGE_SUMMER_SOC)
+        self.discharge_price_quantile = _num(opts, CONF_DISCHARGE_PRICE_QUANTILE, DEFAULT_DISCHARGE_PRICE_QUANTILE)
+        self.discharge_allow_soc = _num(opts, CONF_DISCHARGE_ALLOW_SOC, DEFAULT_DISCHARGE_ALLOW_SOC)
+        self.discharge_summer_soc = _num(opts, CONF_DISCHARGE_SUMMER_SOC, DEFAULT_DISCHARGE_SUMMER_SOC)
 
         # Fixpreis-Vergleich (ct/kWh → €/kWh)
-        self.fixed_price_compare = opts.get(CONF_FIXED_PRICE_COMPARE, DEFAULT_FIXED_PRICE_COMPARE) / 100.0
+        self.fixed_price_compare = _num(opts, CONF_FIXED_PRICE_COMPARE, DEFAULT_FIXED_PRICE_COMPARE) / 100.0
 
         # Amortisation Helper (Pflicht für Persistenz)
         self.amortisation_helper = opts.get(CONF_AMORTISATION_HELPER)
         self.restore_from_helper = opts.get(CONF_RESTORE_FROM_HELPER, False)
 
         # Jährliche Kosten (Versicherung, Wartung etc.)
-        self.yearly_cost = opts.get(CONF_YEARLY_COST, DEFAULT_YEARLY_COST)
+        self.yearly_cost = _num(opts, CONF_YEARLY_COST, DEFAULT_YEARLY_COST)
 
         # Savings-Offset: Bei aktivem Helper-Restore ist der Helper die Wahrheit —
         # eine Options-Speicherung darf den daraus berechneten Offset nicht auf
@@ -2324,15 +2336,30 @@ class PVManagementController:
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
                     helper_value = float(state.state)
+                    # input_number.set_value wirft bei Werten außerhalb min/max →
+                    # auf den Bereich des Helpers begrenzen (und einmal warnen).
+                    target = calc.clamp(
+                        round(current_savings, 2),
+                        state.attributes.get("min"),
+                        state.attributes.get("max"),
+                    )
+                    if target != round(current_savings, 2) and not self._helper_range_warned:
+                        _LOGGER.warning(
+                            "Gesamtersparnis %.2f EUR liegt außerhalb des Bereichs von %s "
+                            "(min=%s, max=%s) — bitte den Helper-Bereich erweitern",
+                            current_savings, self.amortisation_helper,
+                            state.attributes.get("min"), state.attributes.get("max"),
+                        )
+                        self._helper_range_warned = True
                     # Nur updaten wenn sich der Wert signifikant geändert hat (> 0.01 EUR)
-                    if abs(helper_value - current_savings) > 0.01:
+                    if abs(helper_value - target) > 0.01:
                         self.hass.async_create_task(
                             self.hass.services.async_call(
                                 "input_number",
                                 "set_value",
                                 {
                                     "entity_id": self.amortisation_helper,
-                                    "value": round(current_savings, 2),
+                                    "value": target,
                                 },
                             )
                         )
@@ -3260,8 +3287,11 @@ class PVManagementController:
             self._total_self_consumption_kwh,
             calculated_self_consumption,
         )
+        # Einspeisung ist ebenfalls TOTAL_INCREASING — ein kurzer Rücksprung des
+        # Export-Zählers darf den Total nicht senken (HA wertet das als Reset
+        # und verbucht beim Wiederanstieg alles doppelt in der Statistik).
         new_total_feed_in = max(
-            0.0,
+            self._total_feed_in_kwh,
             self._baseline_feed_in_kwh + (current_export - self._baseline_grid_export_kwh),
         )
 
