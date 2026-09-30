@@ -493,6 +493,20 @@ class PVManagementController:
             return self._convert_price_to_eur(self.feed_in_tariff, self.feed_in_tariff_unit, auto_detect=False)
 
     @property
+    def reference_electricity_price(self) -> float:
+        """Konfigurierter statischer Strompreis in €/kWh (unabhängig vom Sensor).
+
+        Wird nur für die einmalige Bewertung historischer kWh bei der
+        Erst-Initialisierung verwendet.
+        """
+        return self._convert_price_to_eur(self.electricity_price, self.electricity_price_unit, auto_detect=False)
+
+    @property
+    def reference_feed_in_tariff(self) -> float:
+        """Konfigurierte statische Einspeisevergütung in €/kWh (unabhängig vom Sensor)."""
+        return self._convert_price_to_eur(self.feed_in_tariff, self.feed_in_tariff_unit, auto_detect=False)
+
+    @property
     def electricity_price_source(self) -> str:
         """Zeigt die Quelle des aktuellen Strompreises."""
         if not self.electricity_price_entity:
@@ -2688,9 +2702,14 @@ class PVManagementController:
         self_consumption = max(0, pv_total - export_total)
         feed_in = export_total
 
-        # Berechne historische Ersparnis mit aktuellen Preisen
-        price_electricity = self.current_electricity_price
-        price_feed_in = self.current_feed_in_tariff
+        # Historische kWh EINMALIG mit dem konfigurierten (statischen) Preis
+        # bewerten und danach fix als € speichern. Der momentane Sensorpreis
+        # wäre bei EPEX-Tarifen ein Zufallswert (mittags evtl. negativ) — die
+        # komplette Historie würde sonst mit diesem einen Viertelstundenpreis
+        # bewertet. Ab jetzt wird jedes kWh-Delta mit dem dann gültigen Preis
+        # aufsummiert (_process_energy_update).
+        price_electricity = self.reference_electricity_price
+        price_feed_in = self.reference_feed_in_tariff
 
         savings_self = self_consumption * price_electricity
         earnings_feed = feed_in * price_feed_in
