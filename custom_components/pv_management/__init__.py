@@ -131,6 +131,8 @@ class PVManagementController:
         # Letzte bekannte Preise (für Fallback wenn Sensor temporär nicht verfügbar)
         self._last_known_electricity_price: float | None = None
         self._last_known_feed_in_tariff: float | None = None
+        self._last_known_electricity_uom: str | None = None
+        self._last_known_feed_in_uom: str | None = None
         self._price_sensor_available = True
         self._tariff_sensor_available = True
         self._price_fallback_logged = False  # Nur einmal loggen
@@ -388,27 +390,28 @@ class PVManagementController:
                 return value / 1000
         return value
 
-    def _convert_price_to_eur(self, price: float, unit: str, auto_detect: bool = False) -> float:
+    def _convert_price_to_eur(
+        self, price: float, unit: str, auto_detect: bool = False, uom: str | None = None
+    ) -> float:
         """
-        Konvertiert Preis zu Euro/kWh (von Cent falls nötig).
+        Konvertiert Preis zu Euro/kWh.
 
-        Bei auto_detect=True wird anhand des Wertes erkannt:
-        - Wert > 1.0 → wahrscheinlich Cent/kWh → durch 100 teilen
-        - Wert <= 1.0 → wahrscheinlich Euro/kWh → direkt verwenden
+        Reihenfolge (siehe calc.price_divisor):
+        1. unit_of_measurement des Sensors (ct/kWh, €/kWh, €/MWh …)
+        2. Konfigurierte Einheit "Cent" wird immer respektiert
+        3. Nur bei konfiguriertem Euro + auto_detect: |Wert| > 1 → Cent
+           (negativ-sicher: -5 ct/kWh wird nicht mehr als -5 €/kWh gelesen)
         """
-        if auto_detect:
-            # Automatische Erkennung: Werte > 1 sind vermutlich in Cent
-            if price > 1.0:
-                _LOGGER.debug("Auto-detect: Preis %.2f > 1, interpretiere als Cent/kWh", price)
-                return price / 100.0
-            else:
-                _LOGGER.debug("Auto-detect: Preis %.4f <= 1, interpretiere als Euro/kWh", price)
-                return price
+        return calc.price_to_eur_per_kwh(price, unit, uom, auto_detect)
 
-        # Manuelle Einstellung
-        if unit == PRICE_UNIT_CENT:
-            return price / 100.0
-        return price
+    def _entity_uom(self, entity_id: str | None) -> str | None:
+        """unit_of_measurement einer Entity (oder None)."""
+        if not entity_id:
+            return None
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+        return state.attributes.get("unit_of_measurement")
 
     def _get_entity_value(self, entity_id: str | None, fallback: float = 0.0) -> tuple[float, bool]:
         """
@@ -444,13 +447,20 @@ class PVManagementController:
             self._price_sensor_available = is_available
 
             if is_available:
-                # Sensor verfügbar - AUTO-DETECT ob Euro oder Cent
+                # Sensor verfügbar - Einheit aus Sensor/Konfiguration, sonst AUTO-DETECT
                 self._last_known_electricity_price = raw_price
+                self._last_known_electricity_uom = self._entity_uom(self.electricity_price_entity)
                 self._price_fallback_logged = False  # Reset für nächstes Mal
-                return self._convert_price_to_eur(raw_price, self.electricity_price_unit, auto_detect=True)
+                return self._convert_price_to_eur(
+                    raw_price, self.electricity_price_unit, auto_detect=True,
+                    uom=self._last_known_electricity_uom,
+                )
             elif self._last_known_electricity_price is not None:
                 # Sensor nicht verfügbar, aber wir haben einen gecachten Wert
-                return self._convert_price_to_eur(self._last_known_electricity_price, self.electricity_price_unit, auto_detect=True)
+                return self._convert_price_to_eur(
+                    self._last_known_electricity_price, self.electricity_price_unit, auto_detect=True,
+                    uom=self._last_known_electricity_uom,
+                )
             else:
                 # Kein gecachter Wert, verwende Config-Fallback (manuelle Einheit)
                 if not self._price_fallback_logged:
@@ -478,11 +488,18 @@ class PVManagementController:
 
             if is_available:
                 self._last_known_feed_in_tariff = raw_tariff
+                self._last_known_feed_in_uom = self._entity_uom(self.feed_in_tariff_entity)
                 self._tariff_fallback_logged = False  # Reset für nächstes Mal
-                return self._convert_price_to_eur(raw_tariff, self.feed_in_tariff_unit, auto_detect=True)
+                return self._convert_price_to_eur(
+                    raw_tariff, self.feed_in_tariff_unit, auto_detect=True,
+                    uom=self._last_known_feed_in_uom,
+                )
             elif self._last_known_feed_in_tariff is not None:
                 # Sensor nicht verfügbar, aber wir haben einen gecachten Wert
-                return self._convert_price_to_eur(self._last_known_feed_in_tariff, self.feed_in_tariff_unit, auto_detect=True)
+                return self._convert_price_to_eur(
+                    self._last_known_feed_in_tariff, self.feed_in_tariff_unit, auto_detect=True,
+                    uom=self._last_known_feed_in_uom,
+                )
             else:
                 if not self._tariff_fallback_logged:
                     _LOGGER.info("Einspeise-Tarif-Sensor nicht verfügbar, verwende Konfigurationswert")
@@ -491,6 +508,26 @@ class PVManagementController:
         else:
             self._tariff_sensor_available = True
             return self._convert_price_to_eur(self.feed_in_tariff, self.feed_in_tariff_unit, auto_detect=False)
+
+    @property
+    def electricity_price_detected_unit(self) -> str | None:
+        """Erkannte Einheit des Strompreis-Sensors (Diagnose)."""
+        raw = self._last_known_electricity_price
+        if raw is None:
+            return None
+        return calc.price_unit_label(
+            raw, self.electricity_price_unit, self._last_known_electricity_uom, auto_detect=True
+        )
+
+    @property
+    def feed_in_tariff_detected_unit(self) -> str | None:
+        """Erkannte Einheit des Einspeise-Sensors (Diagnose)."""
+        raw = self._last_known_feed_in_tariff
+        if raw is None:
+            return None
+        return calc.price_unit_label(
+            raw, self.feed_in_tariff_unit, self._last_known_feed_in_uom, auto_detect=True
+        )
 
     @property
     def reference_electricity_price(self) -> float:
@@ -895,53 +932,45 @@ class PVManagementController:
         else:
             return self.discharge_hold_soc  # z.B. 80% - Batterie wird gehalten
 
+    @staticmethod
+    def _forecast_entry_start(entry: dict) -> datetime | None:
+        """Startzeit eines Prognose-Eintrags, in lokale Zeit gewandelt."""
+        start = (
+            entry.get("start_time") or entry.get("start")
+            or entry.get("time") or entry.get("datetime")
+        )
+        if isinstance(start, str):
+            try:
+                start = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+        if not isinstance(start, datetime):
+            return None
+        if start.tzinfo is not None:
+            start = dt_util.as_local(start)
+        return start
+
     @property
     def epex_price_diff_today(self) -> float | None:
         """
         Berechnet die Preisdifferenz (max - min) für heute in ct/kWh.
-        Verwendet die EPEX Preisprognose.
+        Verwendet die EPEX Preisprognose (negative Preise werden korrekt behandelt).
         """
         if not self._epex_price_forecast:
             return None
 
         try:
-            now = _now()
-            today = now.date()
-
-            # Filtere Preise für heute
+            today = _today()
             today_prices = []
             for entry in self._epex_price_forecast:
-                entry_time = entry.get("start_time") or entry.get("time")
-                if entry_time:
-                    if isinstance(entry_time, str):
-                        entry_dt = datetime.fromisoformat(entry_time.replace("Z", "+00:00"))
-                    else:
-                        entry_dt = entry_time
-
-                    if entry_dt.date() == today:
-                        # Versuche verschiedene Preisattribute
-                        price_mwh = entry.get("price_eur_per_mwh")
-                        price_kwh = entry.get("price_per_kwh")
-                        price_generic = entry.get("price")
-
-                        price_ct = None
-                        if price_mwh is not None:
-                            # EUR/MWh → ct/kWh (÷10)
-                            price_ct = price_mwh / 10
-                        elif price_kwh is not None:
-                            # EUR/kWh → ct/kWh (×100)
-                            price_ct = price_kwh * 100
-                        elif price_generic is not None:
-                            # Heuristik: >10 = wahrscheinlich EUR/MWh, <1 = EUR/kWh, sonst ct/kWh
-                            if price_generic > 10:
-                                price_ct = price_generic / 10
-                            elif price_generic < 1:
-                                price_ct = price_generic * 100
-                            else:
-                                price_ct = price_generic
-
-                        if price_ct is not None:
-                            today_prices.append(price_ct)
+                if not isinstance(entry, dict):
+                    continue
+                entry_dt = self._forecast_entry_start(entry)
+                if entry_dt is None or entry_dt.date() != today:
+                    continue
+                price_eur = calc.forecast_entry_price_eur(entry)
+                if price_eur is not None:
+                    today_prices.append(price_eur * 100)  # ct/kWh
 
             if len(today_prices) < 2:
                 return None
@@ -1094,25 +1123,12 @@ class PVManagementController:
                 price = None
 
                 if isinstance(entry, dict):
-                    # Verschiedene EPEX Formate unterstützen
-                    start_time = entry.get("start_time") or entry.get("start") or entry.get("time") or entry.get("datetime")
-                    price = (
-                        entry.get("price_per_kwh") or      # EPEX Spot Data Integration
-                        entry.get("price_eur_per_kwh") or  # Alternatives Format
-                        entry.get("price") or              # Generisch
-                        entry.get("total_price") or        # Mit Steuern
-                        entry.get("marketprice")           # Awattar Format (ct/kWh)
-                    )
-
-                    if start_time and price is not None:
-                        try:
-                            if isinstance(start_time, str):
-                                dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
-                                hour = dt.hour
-                            elif hasattr(start_time, 'hour'):
-                                hour = start_time.hour
-                        except (ValueError, AttributeError):
-                            continue
+                    # Verschiedene EPEX Formate unterstützen — Preis in €/kWh
+                    # (0 und negative Preise sind gültig, kein "or"-Fallthrough)
+                    price = calc.forecast_entry_price_eur(entry)
+                    start_dt = self._forecast_entry_start(entry)
+                    if start_dt is not None and price is not None:
+                        hour = start_dt.hour
 
                 if hour is not None and price is not None:
                     hours_until = hour - current_hour
@@ -2911,6 +2927,11 @@ class PVManagementController:
         total = sum(self._string_peak_w.values())
         return round(total / 1000, 1) if total > 0 else None
 
+    def _epex_price_to_eur(self, value: float, state) -> float:
+        """EPEX-Sensorwert in €/kWh (Einheit aus dem Sensor, sonst Auto-Detect)."""
+        uom = state.attributes.get("unit_of_measurement") if state is not None else None
+        return calc.price_to_eur_per_kwh(value, None, uom, auto_detect=True)
+
     def _load_epex_forecast(self, state) -> None:
         """Lädt EPEX Preisprognose aus verschiedenen Attributen."""
         try:
@@ -3001,6 +3022,10 @@ class PVManagementController:
         # EPEX Spot Preis
         if self.epex_price_entity:
             new_val = _read_float(self.epex_price_entity)
+            if new_val is not None:
+                new_val = self._epex_price_to_eur(
+                    new_val, self.hass.states.get(self.epex_price_entity)
+                )
             if new_val is not None and new_val != self._epex_price:
                 _LOGGER.debug(
                     "Backup-Sync: EPEX Preis %s aktualisiert %.4f → %.4f",
@@ -3367,7 +3392,7 @@ class PVManagementController:
 
         # EPEX Spot Sensoren
         elif entity_id == self.epex_price_entity:
-            self._epex_price = value
+            self._epex_price = self._epex_price_to_eur(value, new_state)
             # Versuche Preisprognose aus 'data' Attribut zu laden
             self._load_epex_forecast(new_state)
             recommendation_changed = True
@@ -3478,7 +3503,7 @@ class PVManagementController:
             state = self.hass.states.get(self.epex_price_entity)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
-                    self._epex_price = float(state.state)
+                    self._epex_price = self._epex_price_to_eur(float(state.state), state)
                     self._load_epex_forecast(state)
                 except (ValueError, TypeError):
                     pass

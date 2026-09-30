@@ -1091,8 +1091,8 @@ class CurrentElectricityPriceSensor(BaseEntity):
         return {
             "source": self.ctrl.electricity_price_source,
             "sensor_available": self.ctrl._price_sensor_available,
-            "raw_sensor_value": f"{raw:.4f}" if raw else None,
-            "auto_detected_unit": "cent" if raw and raw > 1.0 else "euro" if raw else None,
+            "raw_sensor_value": f"{raw:.4f}" if raw is not None else None,
+            "auto_detected_unit": self.ctrl.electricity_price_detected_unit,
             "config_fallback": f"{self.ctrl.electricity_price:.4f}",
             "config_unit": self.ctrl.electricity_price_unit,
         }
@@ -1123,8 +1123,8 @@ class CurrentFeedInTariffSensor(BaseEntity):
         return {
             "source": self.ctrl.feed_in_tariff_source,
             "sensor_available": self.ctrl._tariff_sensor_available,
-            "raw_sensor_value": f"{raw:.4f}" if raw else None,
-            "auto_detected_unit": "cent" if raw and raw > 1.0 else "euro" if raw else None,
+            "raw_sensor_value": f"{raw:.4f}" if raw is not None else None,
+            "auto_detected_unit": self.ctrl.feed_in_tariff_detected_unit,
             "config_fallback": f"{self.ctrl.feed_in_tariff:.4f}",
             "config_unit": self.ctrl.feed_in_tariff_unit,
         }
