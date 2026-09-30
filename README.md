@@ -294,7 +294,7 @@ Under **Settings > Devices & Services > PV Management > Configure**:
 |----------|----------------------|
 | **Sensors** | PV Production, Grid Export/Import, Consumption, Battery SOC, PV Power/Forecast |
 | **Electricity Prices** | Price unit, fallback price, dynamic sensor, feed-in tariff, fixed price comparison |
-| **Integrations** | EPEX Spot Price, EPEX Quantile, Solcast Forecast |
+| **Integrations** | EPEX Spot Price, EPEX Quantile, Solcast Forecast, Solcast P50/P10 weighting |
 | **Amortization Helper** | input_number for persistent storage |
 | **Battery Control** | Target SOC, Auto-Charge settings, Discharge Control settings |
 | **Advanced** | PV peak power, winter base load, traffic light thresholds |
@@ -591,6 +591,17 @@ For **fixed-price tariffs** with battery tracking, ROI, and electricity quota:
 ---
 
 ## Changelog
+
+### v4.6.0
+- **NEW: Solcast P50/P10 weighting** (#18) — Option under *Integrations*: 0 = 100 % P50 (default, unchanged), 1 = 100 % P10, linear in between. Applies to the daily forecast (auto-charge, recommendation) and the hourly values/PV tips; falls back to P50 when Solcast provides no P10 values
+- **FIX: Savings with dynamic prices** (#19) — historical kWh are valued once with the configured static price on first initialisation; afterwards every kWh delta is added with the price valid at that moment (no revaluation of history)
+- **FIX: Price units** — the sensor's unit (ct/kWh, €/kWh, €/MWh) and the configured unit "Cent" take precedence over the value-based auto-detect; negative spot prices in ct are no longer read as €
+- **FIX: Helper restore** — restored savings include yearly costs and are no longer overwritten when options are saved
+- **FIX: Restart** — meter readings/baselines are persisted, energy produced while HA was down is booked on the first update
+- **FIX: Monthly report** reports the closed month (not ~0 on the 1st) and is not sent twice after a restart
+- **FIX: Long-term statistics** — daily sensors (feed-in, grid import, daily costs) have `last_reset` and reset at local midnight; feed-in total can no longer decrease
+- **FIX: Reload** — no helper sync from the old controller, no duplicate update listeners, timers are cancelled
+- **Performance** — state listener only for configured entities, throttled updates for power sensors, large attributes excluded from the recorder
 
 ### v3.21.5
 - **NEW: PV-String Peak & Efficiency** — Optional power sensor (W) per string for automatic peak tracking (kW) and efficiency calculation (kWh/kWp)
