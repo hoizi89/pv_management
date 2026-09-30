@@ -7,6 +7,8 @@ diese Funktionen auf, statt die Formeln selbst zu duplizieren.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 
 def total_savings(
     accumulated_self: float,
@@ -30,3 +32,16 @@ def helper_offset(helper_value: float, accumulated: float, yearly_costs: float) 
     Offset nicht auf >= 0 geklemmt.
     """
     return helper_value - accumulated + yearly_costs
+
+
+def start_of_day(now: datetime) -> datetime:
+    """Beginn des lokalen Tages von ``now`` (Zeitzone von ``now`` bleibt erhalten).
+
+    Wird als ``last_reset`` fuer taeglich zurueckgesetzte TOTAL-Sensoren genutzt.
+    """
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def start_of_month(now: datetime) -> datetime:
+    """Beginn des lokalen Monats von ``now``."""
+    return start_of_day(now).replace(day=1)

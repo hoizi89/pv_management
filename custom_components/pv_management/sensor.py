@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -1706,6 +1706,11 @@ class DailyFeedInSensor(BaseEntity):
         return round(self.ctrl.daily_feed_in_earnings, 2)
 
     @property
+    def last_reset(self) -> datetime:
+        """Beginn des lokalen Tages - der Wert wird täglich auf 0 gesetzt."""
+        return self.ctrl.daily_last_reset
+
+    @property
     def extra_state_attributes(self) -> dict:
         return {
             "amount_kwh": round(self.ctrl.daily_feed_in_kwh, 2),
@@ -1731,6 +1736,11 @@ class DailyGridImportSensor(BaseEntity):
     @property
     def native_value(self) -> float:
         return round(self.ctrl.daily_grid_import_cost, 2)
+
+    @property
+    def last_reset(self) -> datetime:
+        """Beginn des lokalen Tages - der Wert wird täglich auf 0 gesetzt."""
+        return self.ctrl.daily_last_reset
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -1840,6 +1850,11 @@ class DailyNetElectricityCostSensor(BaseEntity):
     @property
     def native_value(self) -> float:
         return round(self.ctrl.daily_net_electricity_cost, 2)
+
+    @property
+    def last_reset(self) -> datetime:
+        """Beginn des lokalen Tages - der Wert wird täglich auf 0 gesetzt."""
+        return self.ctrl.daily_last_reset
 
     @property
     def extra_state_attributes(self) -> dict:
