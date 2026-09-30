@@ -623,6 +623,10 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                     ctrl._accumulated_savings_self = 0.0
                     ctrl._accumulated_earnings_feed = 0.0
                     ctrl._first_seen_date = None
+                    # Helper-abgeleiteten Offset verwerfen — ein Reset soll
+                    # nicht die alte Gesamtersparnis wieder draufrechnen.
+                    ctrl._helper_restore_value = None
+                    ctrl.savings_offset = ctrl._configured_savings_offset
                     ctrl._initialize_from_sensors()
                     ctrl._last_pv_production_kwh = ctrl._pv_production_kwh
                     ctrl._last_grid_export_kwh = ctrl._grid_export_kwh

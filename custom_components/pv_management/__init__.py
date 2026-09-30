@@ -60,6 +60,7 @@ from .const import (
     CONF_HOUSE_POWER_ENTITY, SURPLUS_RATIOS,
     CONF_SHIFTABLE_LOAD_ENTITY,
 )
+from . import calc
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -79,6 +80,11 @@ class PVManagementController:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.hass = hass
         self.entry = entry
+
+        # Vom Helper wiederhergestellte Gesamtersparnis (None = kein Helper-Restore).
+        # Solange gesetzt, ist der Helper die Wahrheit und _load_options() darf
+        # den daraus berechneten savings_offset nicht überschreiben.
+        self._helper_restore_value: float | None = None
 
         # Konfigurierbare Werte (aus Options, fallback zu data)
         self._load_options()
@@ -251,7 +257,7 @@ class PVManagementController:
         # Kosten und Datum
         self.installation_cost = opts.get(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)
         self.installation_date = opts.get(CONF_INSTALLATION_DATE)
-        self.savings_offset = opts.get(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)
+        self._configured_savings_offset = opts.get(CONF_SAVINGS_OFFSET, DEFAULT_SAVINGS_OFFSET)
 
         # Empfehlungs-Schwellwerte
         self.battery_soc_high = opts.get(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)
@@ -297,6 +303,17 @@ class PVManagementController:
 
         # Jährliche Kosten (Versicherung, Wartung etc.)
         self.yearly_cost = opts.get(CONF_YEARLY_COST, DEFAULT_YEARLY_COST)
+
+        # Savings-Offset: Bei aktivem Helper-Restore ist der Helper die Wahrheit —
+        # eine Options-Speicherung darf den daraus berechneten Offset nicht auf
+        # den (meist 0) konfigurierten Wert zurücksetzen, sonst synct der
+        # Controller danach den zu niedrigen Wert in den Helper.
+        if (self._helper_restore_value is not None
+                and self.restore_from_helper and self.amortisation_helper):
+            pass  # savings_offset bleibt der vom Helper abgeleitete Wert
+        else:
+            self._helper_restore_value = None
+            self.savings_offset = self._configured_savings_offset
 
         # Aliase für Rückwärtskompatibilität
         self.auto_charge_target_soc = self.battery_target_soc
@@ -1410,8 +1427,12 @@ class PVManagementController:
     @property
     def total_savings(self) -> float:
         """Gesamtersparnis inkl. manuellem Offset, abzüglich jährlicher Kosten."""
-        base = self.savings_self_consumption + self.earnings_feed_in
-        return base + self.savings_offset - self.total_yearly_costs
+        return calc.total_savings(
+            self.savings_self_consumption,
+            self.earnings_feed_in,
+            self.savings_offset,
+            self.total_yearly_costs,
+        )
 
     @property
     def amortisation_percent(self) -> float:
@@ -2234,8 +2255,9 @@ class PVManagementController:
                     )
 
                     # Setze den Offset so, dass total_savings dem Helper entspricht
-                    current_accumulated = self._accumulated_savings_self + self._accumulated_earnings_feed
-                    self.savings_offset = max(0, helper_value - current_accumulated)
+                    # (inkl. Jahreskosten, siehe calc.helper_offset)
+                    self._helper_restore_value = helper_value
+                    self._apply_helper_restore()
 
                     self._restored = True
                     self._notify_entities()
@@ -2244,6 +2266,19 @@ class PVManagementController:
             _LOGGER.warning("Restore from helper failed: %s", e)
 
         return False
+
+    def _apply_helper_restore(self) -> None:
+        """Berechnet den savings_offset so, dass total_savings == Helper-Wert.
+
+        Wird auch nach restore_state() erneut aufgerufen, falls der Helper-
+        Restore vor dem Laden der gespeicherten Akkumulatoren lief.
+        """
+        if self._helper_restore_value is None:
+            return
+        accumulated = self._accumulated_savings_self + self._accumulated_earnings_feed
+        self.savings_offset = calc.helper_offset(
+            self._helper_restore_value, accumulated, self.total_yearly_costs
+        )
 
     def _check_milestones(self) -> None:
         """Prüft und feuert Meilenstein-Events (25%, 50%, 75%, 100%)."""
@@ -2491,6 +2526,10 @@ class PVManagementController:
                 self._monthly_bucket_month = int(self._monthly_bucket_month)
             except (ValueError, TypeError):
                 self._monthly_bucket_month = None
+
+        # Falls der Helper-Restore schon vorher lief: Offset mit den jetzt
+        # geladenen Akkumulatoren neu berechnen (Helper bleibt die Wahrheit).
+        self._apply_helper_restore()
 
         self._restored = True
 
